@@ -1,0 +1,146 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/23/2025 2:38:47 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Bitmap Chunk Subroutine
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 5/22/2025
+00000000                             5  * Description:
+00000000                             6  
+00000000                             7  *A subroutine that can display
+00000000                             8  *   a chunk of a .bmp file at a location on the screen.
+00000000                             9  * The arguments for your subroutine are:
+00000000                            10  *   - Pointer to .bmp file (NOT a pointer to the pixel data)
+00000000                            11  *   - Top, Left corner (x,y) of the bitmap chunk you want to display
+00000000                            12  *   - Width and Height of the bitmap chunk you want to display
+00000000                            13  *   - Top, Left corner (x,y) on the output screen to display your chunk
+00000000                            14  * Can handle 24-bit and 32-bit bitmaps
+00000000                            15  *-----------------------------------------------------------
+00000000  =0000FF3B                 16  GREEN_SKIP_COLOR                EQU     $FF3B
+00000000  =0000000A                 17  TOP_LEFT_X_SCREEN_INDEX         EQU     10
+00000000  =00000008                 18  TOP_LEFT_Y_SCREEN_INDEX         EQU     8
+00000000  =00000012                 19  TOP_LEFT_X_BITMAP_CHUNK_INDEX   EQU     18
+00000000  =0000000C                 20  TOP_LEFT_Y_BITMAP_CHUNK_INDEX   EQU     12
+00000000  =00000052                 21  DRAW_PIXEL_COMMAND              EQU     82
+00000000                            22  
+00000000                            23  CONVERT_LONG_LE_TO_BE
+00000000                            24      ;Converts a long in little endian to big endian
+00000000  E05F                      25      ROR.W #8, D7                                    ;TRANSFORM for little endian 
+00000002  4847                      26      SWAP D7
+00000004  E05F                      27      ROR.W #8, D7
+00000006  4E75                      28      RTS
+00000008                            29      
+00000008                            30  DRAW_CHUNK_THIRTY_TWO
+00000008  4EB9 0000004A             31      JSR GET_COLOR
+0000000E  5248                      32      ADDA #1, A0                                     ;Trash alpha
+00000010  4EB9 0000002C             33      JSR SET_COLOR_AND_DRAW
+00000016                            34      
+00000016  B5FC 00000000             35      CMP.L #0, A2                                    ;Comparing the width with 0
+0000001C  66EA                      36      BNE DRAW_CHUNK_THIRTY_TWO
+0000001E                            37         
+0000001E  2E06                      38      MOVE.L D6,D7                                    ;PIXELS * 4 FOR 4 BYTES PER PIXEL
+00000020  E58F                      39      LSL.L #2, D7                        
+00000022                            40      
+00000022  D0C7                      41      ADDA D7, A0                                     ;End of row + beginning of next row
+00000024  4283                      42      CLR.L D3
+00000026  360D                      43      MOVE.W A5,D3                                    ;Reset x screen
+00000028  344E                      44      MOVE.W A6,A2                                    ;Reset width counter
+0000002A                            45      
+0000002A                            46      ;SUBI.L #1, D2                                   ;DECREMENT SCREEN Y COORDINATE
+0000002A                            47      ;CLR.L D7
+0000002A                            48      ;MOVE.W (TOP_LEFT_Y_SCREEN_INDEX+4)(SP),D7       ;top left y value
+0000002A                            49      ;CMP.L D7,D2                                     ;If we havent reached the end of the y rows loop, otherwise, end
+0000002A                            50      ;BNE DRAW_CHUNK_THIRTY_TWO
+0000002A                            51      
+Line 52 ERROR: Invalid addressing mode
+0000002A                            52      DBRA A4, DRAW_CHUNK_THIRTY_TWO
+0000002A  4E75                      53      RTS
+0000002C                            54          
+0000002C                            55  SET_COLOR_AND_DRAW
+0000002C  0C81 0000FF3B             56      CMPI.L #$FF3B, D1
+00000032  6700 0010                 57      BEQ SKIP_COLOR
+00000036                            58      
+Line 59 ERROR: Undefined symbol
+00000036  103C 0016                 59      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+0000003A  4E4F                      60      TRAP    #15
+0000003C                            61      
+0000003C  2203                      62      MOVE.L D3,D1                ;Move X SCREEN value into D1 for draw pixel command
+0000003E                            63      
+0000003E  103C 0052                 64      MOVE.B #DRAW_PIXEL_COMMAND, D0
+00000042  4E4F                      65      TRAP #15
+00000044                            66      
+00000044                            67  SKIP_COLOR    
+00000044  5243                      68      ADDI #1,D3                  ;Increment X coordinate screen
+00000046  534A                      69      SUBA #1, A2                 ;subtract 1 from the width
+00000048  4E75                      70      RTS 
+0000004A                            71      
+0000004A                            72  GET_COLOR
+0000004A  3218                      73      MOVE.W (A0)+, D1            ;BLUE
+0000004C  E189                      74      LSL.L #8, D1
+0000004E  1218                      75      MOVE.B (A0)+, D1            ;BLUE + GREEN + RED
+00000050                            76      
+00000050  4E75                      77      RTS
+00000052                            78                   
+00000052                            79  THIRTY_TWO_BIT_BITMAP
+00000052  E58D                      80      LSL.L #2, D5                ;number of bytes passed over (4 bytes per pixel)
+00000054  D1C5                      81      ADDA.L D5, A0               ;Gets the location of the top left pixel in memory
+00000056  4EB8 0008                 82      JSR DRAW_CHUNK_THIRTY_TWO
+0000005A  4E75                      83      RTS
+0000005C                            84      
+0000005C                            85      
+0000005C                            86  
+0000005C                            87  
+0000005C                            88  
+0000005C                            89  
+0000005C                            90  
+0000005C                            91  
+0000005C                            92  
+0000005C                            93  
+0000005C                            94  
+0000005C                            95  
+0000005C                            96  
+0000005C                            97  
+0000005C                            98  
+0000005C                            99  
+0000005C                           100  
+0000005C                           101  
+0000005C                           102  
+0000005C                           103  
+0000005C                           104  
+0000005C                           105  
+0000005C                           106  
+0000005C                           107  
+0000005C                           108  
+0000005C                           109  
+0000005C                           110  
+0000005C                           111  
+0000005C                           112  
+0000005C                           113  
+0000005C                           114  
+0000005C                           115  
+0000005C                           116  
+0000005C                           117  
+0000005C                           118  
+0000005C                           119  
+Line 120 WARNING: END directive missing, starting address not set
+
+2 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CONVERT_LONG_LE_TO_BE  0
+DRAW_CHUNK_THIRTY_TWO  8
+DRAW_PIXEL_COMMAND  52
+GET_COLOR           4A
+GREEN_SKIP_COLOR    FF3B
+SET_COLOR_AND_DRAW  2C
+SKIP_COLOR          44
+THIRTY_TWO_BIT_BITMAP  52
+TOP_LEFT_X_BITMAP_CHUNK_INDEX  12
+TOP_LEFT_X_SCREEN_INDEX  A
+TOP_LEFT_Y_BITMAP_CHUNK_INDEX  C
+TOP_LEFT_Y_SCREEN_INDEX  8
