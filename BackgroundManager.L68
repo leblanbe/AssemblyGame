@@ -1,0 +1,206 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/23/2025 12:28:57 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Background Manager 
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 6/2/2025
+00000000                             5  * Description: Manages the game’s background rendering, transitions, and animated sequences, particularly during
+00000000                             6  ;                 state changes like winning, losing, or starting the game. Draws specific bitmap sections based
+00000000                             7  ;                 on sprite positions, and controls sequences like the animated "jumping cat" intro through multiple
+00000000                             8  ;                 stages of movement and poses. Handles screen-clearing visuals (like the loading screen),
+00000000                             9  ;                 triggers associated sounds, and responds to mouse inputs for restarting the game. Additionally, it
+00000000                            10  ;                 resets key gameplay variables (e.g., cat state, car spawn timers, sprite positioning) to ensure a
+00000000                            11  ;                 consistent initial state upon restart. 
+00000000                            12  *-----------------------------------------------------------
+00000000  =00000012                 13  BACKGROUND_X_INDEX              EQU     18
+00000000  =00000041                 14  BITMAP_START_Y                  EQU     65
+00000000  =0000019F                 15  BITMAP_END_Y                    EQU     415
+00000000                            16  
+00000000                            17  BACKGROUND_START   
+00000000  2448                      18      MOVE.L A0,A2                ;get another base location for the offset                                         
+00000002  3018                      19      MOVE.W (A0)+, D0            ;Get header
+00000004                            20  
+00000004                            21      
+00000004  4281                      22      CLR.L D1
+00000006  4282                      23      CLR.L D2
+00000008                            24      
+Line 25 ERROR: Undefined symbol
+00000008  49F9 004DBD16             25      LEA SpritePositioning, A4   
+0000000E                            26      
+0000000E  D9FC 00000012             27      ADDA.L #BACKGROUND_X_INDEX, A4
+00000014  3F14                      28      MOVE.W (A4),-(SP)       ;TOP LEFT X CHUNK
+00000016  588C                      29      ADDA.L #4, A4
+00000018  3F1C                      30      MOVE.W (A4)+,-(SP)      ;CHUNK WIDTH
+0000001A  3F14                      31      MOVE.W (A4),-(SP)       ;CHUNK HEIGHT
+0000001C  598C                      32      SUBA.L #4, A4
+0000001E  3F14                      33      MOVE.W (A4),-(SP)       ;TOP LEFT Y CHUNK
+00000020  5C8C                      34      ADDA.L #6, A4
+00000022  3F1C                      35      MOVE.W (A4)+,-(SP)      ;TOP LEFT X SCREEN
+00000024  3F14                      36      MOVE.W (A4),-(SP)       ;TOP LEFT Y SCREEN
+00000026  2F08                      37      MOVE.L A0,-(SP)
+00000028                            38      
+Line 39 ERROR: Undefined symbol
+00000028  4EB9 004DBD16             39      JSR    READ_THROUGH_HEADER
+0000002E  DFFC 00000010             40      ADDA.L #16, A7
+00000034  4E75                      41      RTS
+00000036                            42  
+00000036                            43  WIN_SCREEN
+00000036                            44      
+Line 45 ERROR: Undefined symbol
+00000036  4EB9 004DBD16             45      JSR STOP_BACKGROUND_MUSIC
+Line 46 ERROR: Undefined symbol
+0000003C  4EB9 004DBD16             46      JSR WIN_SOUND
+Line 47 ERROR: Undefined symbol
+00000042  41F9 004DBD16             47      LEA WinScreen, A0
+00000048                            48      
+00000048  6000 0014                 49      BRA END_GAME
+0000004C                            50      
+0000004C                            51  LOSE_SCREEN
+0000004C                            52          
+Line 53 ERROR: Undefined symbol
+0000004C  4EB9 004DBD16             53      JSR STOP_BACKGROUND_MUSIC
+Line 54 ERROR: Undefined symbol
+00000052  4EB9 004DBD16             54      JSR LOSE_SOUND
+Line 55 ERROR: Undefined symbol
+00000058  41F9 004DBD16             55      LEA LoseScreen, A0
+0000005E                            56      
+0000005E                            57  END_GAME
+0000005E  4EB9 000000A4             58      JSR LOADING_SCREEN_POST_START
+00000064  4280                      59      CLR.L D0
+00000066  4281                      60      CLR.L D1
+00000068  4282                      61      CLR.L D2
+0000006A                            62      
+0000006A                            63       *copies buffer
+0000006A  103C 005E                 64       MOVE.B  #94,D0
+0000006E  4E4F                      65       TRAP    #15
+00000070                            66      
+00000070                            67      ;BITMAP IS PASSED INTO A0
+00000070  2448                      68      MOVE.L A0,A2                   
+00000072  3018                      69      MOVE.W (A0)+, D0            ;Get header
+00000074                            70      
+Line 71 ERROR: Undefined symbol
+00000074  49F9 004DBD16             71      LEA SpritePositioning, A4   
+0000007A                            72      
+0000007A  D9FC 00000012             73      ADDA.L #BACKGROUND_X_INDEX, A4
+00000080  3F14                      74      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000082  588C                      75      ADDA.L #4, A4
+00000084  3F1C                      76      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000086  3F14                      77      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000088  598C                      78      SUBA.L #4, A4
+0000008A  3F14                      79      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+0000008C  5C8C                      80      ADDA.L #6, A4
+0000008E  3F1C                      81      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+00000090  3F14                      82      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000092  2F08                      83      MOVE.L A0,-(SP)
+00000094                            84      
+Line 85 ERROR: Undefined symbol
+00000094  4EB9 004DBD16             85      JSR    READ_THROUGH_HEADER
+0000009A                            86  
+0000009A                            87      *copies buffer
+0000009A  103C 005E                 88      MOVE.B  #94,D0
+0000009E  4E4F                      89      TRAP    #15
+000000A0                            90      
+Line 91 ERROR: Undefined symbol
+000000A0  6000 BC74                 91      BRA CHECK_RESTART_AFTER_WIN_LOSE
+000000A4                            92  
+000000A4                            93  LOADING_SCREEN_POST_START
+000000A4                            94      ;Set pen color   
+Line 95 ERROR: Undefined symbol
+000000A4  223C 004DBD16             95      MOVE.L  #WHITE,D1
+Line 96 ERROR: Undefined symbol
+000000AA  103C 0016                 96      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+000000AE  4E4F                      97      TRAP    #15
+000000B0                            98      
+000000B0                            99      ;Set fill color 
+Line 100 ERROR: Undefined symbol
+000000B0  103C 0016                100      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+Line 101 ERROR: Undefined symbol
+000000B4  223C 004DBD16            101      MOVE.L #WHITE, D1
+000000BA  4E4F                     102      TRAP #15
+000000BC                           103      
+Line 104 ERROR: Undefined symbol
+000000BC  223C 004DBD16            104      MOVE.L #SCREEN_START_X,D1
+000000C2  7441                     105      MOVE.L #BITMAP_START_Y,D2
+Line 106 ERROR: Undefined symbol
+000000C4  263C 004DBD16            106      MOVE.L #SCREEN_END_X,D3
+000000CA  283C 0000019F            107      MOVE.L #BITMAP_END_Y,D4
+000000D0                           108      
+Line 109 ERROR: Undefined symbol
+000000D0  103C 0016                109      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000000D4  4E4F                     110      TRAP    #15
+000000D6                           111      
+Line 112 ERROR: Undefined symbol
+000000D6  223C 004DBD16            112      MOVE.L #BLACK, D1   ;set text color to black
+000000DC  4282                     113      CLR.L D2
+000000DE  143C 0006                114      MOVE.B #6, D2
+000000E2  E14A                     115      LSL #8, D2
+000000E4  143C 000E                116      MOVE.B #14, D2      ;size 14 font
+000000E8  E18A                     117      LSL.L #8, D2
+000000EA  E18A                     118      LSL.L #8, D2
+000000EC                           119      
+Line 120 ERROR: Undefined symbol
+000000EC  203C 004DBD16            120      MOVE.L #SET_FONT_COMMAND, D0
+000000F2  4E4F                     121      TRAP    #15
+000000F4                           122  
+Line 123 ERROR: Undefined symbol
+000000F4  43F9 004DBD16            123      LEA LoadingText,A1
+Line 124 ERROR: Undefined symbol
+000000FA  323C BD16                124      MOVE.W #LOADING_TEXT_X, D1
+Line 125 ERROR: Undefined symbol
+000000FE  343C BD16                125      MOVE.W #START_BUTTON_TEXT_Y, D2
+Line 126 ERROR: Undefined symbol
+00000102  203C 004DBD16            126      MOVE.L #DRAW_TEXT_COMMAND, D0
+00000108  4E4F                     127      TRAP #15
+0000010A                           128      
+0000010A  4E75                     129      RTS
+0000010C                           130  
+0000010C                           131  
+0000010C                           132  PRINT_TOM
+Line 133 ERROR: Undefined symbol
+0000010C  41F9 004DBD16            133      LEA NotATomPhoto, A0
+00000112  4280                     134      CLR.L D0
+00000114  2448                     135      MOVE.L A0,A2                ;get another base location for the offset                                         
+00000116  3018                     136      MOVE.W (A0)+, D0            ;Get header
+00000118                           137  
+00000118  4281                     138      CLR.L D1
+0000011A  4282                     139      CLR.L D2
+0000011C                           140  
+0000011C  49F9 0000013E            141      LEA RestartImageDimensions, A4
+00000122  3F1C                     142      MOVE.W (A4)+,-(SP)  ;Bitmap x
+00000124  3F1C                     143      MOVE.W (A4)+,-(SP)  ;width
+00000126  3F1C                     144      MOVE.W (A4)+,-(SP)  ;height
+00000128  3F1C                     145      MOVE.W (A4)+,-(SP)  ;Bitmap y
+0000012A  3F1C                     146      MOVE.W (A4)+,-(SP)  ;screen x
+0000012C  3F1C                     147      MOVE.W (A4)+,-(SP)  ;screen y
+0000012E  2F08                     148      MOVE.L A0,-(SP)
+00000130                           149      
+Line 150 ERROR: Undefined symbol
+00000130  4EB9 004DBD16            150      JSR    READ_THROUGH_HEADER
+00000136  DFFC 00000010            151      ADDA.L #16, A7
+0000013C  4E75                     152      RTS
+0000013E                           153  
+0000013E                           154  
+0000013E                           155  RestartImageDimensions
+0000013E                           156      *x, y, width, height, screen x, screen y
+0000013E= 0000 00BB 0000 0...      157      dc.w 0,187,0,349,220,415
+Line 158 WARNING: END directive missing, starting address not set
+
+26 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BACKGROUND_START    0
+BACKGROUND_X_INDEX  12
+BITMAP_END_Y        19F
+BITMAP_START_Y      41
+END_GAME            5E
+LOADING_SCREEN_POST_START  A4
+LOSE_SCREEN         4C
+PRINT_TOM           10C
+RESTARTIMAGEDIMENSIONS  13E
+WIN_SCREEN          36
