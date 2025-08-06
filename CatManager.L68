@@ -1,0 +1,474 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/17/2025 12:53:10 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Cat Manager
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 6/2/2025
+00000000                             5  * Description: Handles all logic related to the cat's movement and animation in a sprite-based game.
+00000000                             6  ;                It covers upward and downward movement checks, collision detection with cars,
+00000000                             7  ;                and appropriate visual state transitions. The system prevents the cat from moving 
+00000000                             8  ;                into occupied lanes and ensures proper redrawing of the background and cat sprite 
+00000000                             9  ;                depending on whether a collision has occurred. Cat states are updated between idle, 
+00000000                            10  ;                running, and hit states.
+00000000                            11  *-----------------------------------------------------------
+00000000                            12  CAT_RUNNING
+00000000                            13  
+Line 14 ERROR: Undefined symbol
+00000000  41F9 004DBD16             14      LEA CatRunning1, A0
+00000006                            15      
+00000006  2448                      16      MOVE.L A0,A2                             
+00000008  3018                      17      MOVE.W (A0)+, D0            ;Get header
+0000000A                            18      
+Line 19 ERROR: Undefined symbol
+0000000A  49F9 004DBD16             19      LEA SpritePositioning, A4
+00000010                            20      
+00000010  3F14                      21      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000012  588C                      22      ADDA.L #4, A4
+00000014  3F1C                      23      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000016  3F14                      24      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000018  598C                      25      SUBA.L #4, A4
+0000001A  3F14                      26      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+0000001C  5C8C                      27      ADDA.L #6, A4
+0000001E  3F1C                      28      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+00000020  3F14                      29      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000022  2F08                      30      MOVE.L A0,-(SP)
+00000024                            31      
+Line 32 ERROR: Undefined symbol
+00000024  43F9 004DBD16             32      LEA HeaderStates, A1                    
+0000002A  0C51 0000                 33      CMP.W #0,(A1)               ;If the file has been read, restore data gotten in readheader and draw bitmap
+0000002E  6600 0014                 34      BNE HEADER_WAS_READ_CAT1 
+00000032                            35      
+00000032  32BC 0001                 36      MOVE.W #1, (A1)             ;If file hasn't been read, set state so readheader knows to store data
+Line 37 ERROR: Undefined symbol
+00000036  4EB9 004DBD16             37      JSR READ_THROUGH_HEADER
+0000003C  DFFC 00000010             38      ADDA.L #16, A7
+00000042  4E75                      39      RTS
+00000044                            40  HEADER_WAS_READ_CAT1    
+Line 41 ERROR: Undefined symbol
+00000044  47F9 004DBD16             41      LEA HeaderInfoCat1, A3
+Line 42 ERROR: Undefined symbol
+0000004A                            42      MOVEM.L (A3),ALL_REG
+Line 43 ERROR: Undefined symbol
+0000004A  4EB9 004DBD16             43      JSR NO_STORES
+00000050  DFFC 00000010             44      ADDA.L #16, A7
+00000056  4E75                      45      RTS
+00000058                            46  
+00000058                            47  MOVE_CAT_DOWN_CHECK
+Line 48 ERROR: Undefined symbol
+00000058  49F9 004DBD16             48      LEA SpritePositioning, A4
+0000005E  2A4C                      49      MOVE.L A4,A5
+00000060                            50      
+00000060  D9FC 0000000A             51      ADDA.L #10, A4                  ;Y screen
+00000066  0C54 0136                 52      CMPI.W #310,(A4)
+Line 53 ERROR: Undefined symbol
+0000006A  6700 BCAA                 53      BEQ UPDATE
+0000006E                            54      
+0000006E                            55                                      ;IF THERE IS A CAR BELOW THE CAT, DO NOT MOVE IT
+Line 56 ERROR: Undefined symbol
+0000006E  45F9 004DBD16             56      LEA CarXScreenIndex, A2
+00000074  4287                      57      CLR.L D7
+00000076  3E12                      58      MOVE.W (A2),D7
+00000078  0647 0014                 59      ADDI.W #20,D7                   ;Get the x coordinate for the car in the lower lane
+0000007C  DBC7                      60      ADDA.L D7, A5                   ;left x value of car below cat
+0000007E  558C                      61      SUBA.L #2, A4                     ;Left x coordinate of cat on screen
+00000080  3214                      62      MOVE.W (A4),D1
+Line 63 ERROR: Undefined symbol
+00000082  0641 BD16                 63      ADDI.W #CAT_WIDTH, D1           ;Right x coordinate of cat
+00000086  B255                      64      CMP.W (A5),D1                   ;compare left x of car with right point of cat
+Line 65 ERROR: Undefined symbol
+00000088  6E00 BC8C                 65      BGT UPDATE
+0000008C                            66      
+Line 67 ERROR: Undefined symbol
+0000008C  0481 004DBD16             67      SUBI.L #CAT_WIDTH, D1           ;Left x coordinate of cat
+00000092  4286                      68      CLR.L D6
+00000094  3C15                      69      MOVE.W (A5),D6                  ;left x coordinate of car
+00000096  598D                      70      SUBA.L #4, A5
+00000098  DC55                      71      ADD.W (A5),D6                   ;Right x coordinate of car
+0000009A  B246                      72      CMP.W D6, D1                    ;Compare right coordinate of car with left coordinate of cat
+Line 73 ERROR: Undefined symbol
+0000009C  6E00 BC78                 73      BGT UPDATE           
+000000A0                            74      
+000000A0                            75      *redreaw background
+Line 76 ERROR: Undefined symbol
+000000A0  41F9 004DBD16             76      LEA GameBackground, A0
+000000A6  2448                      77      MOVE.L A0,A2               
+000000A8  3018                      78      MOVE.W (A0)+, D0                ;Get header
+000000AA                            79      
+000000AA  588C                      80      ADDA.L #4, A4                   ;BITMAP X
+000000AC  3F14                      81      MOVE.W (A4),-(SP)               ;TOP LEFT X CHUNK
+000000AE  518C                      82      SUBA.L #8, A4
+000000B0  3F1C                      83      MOVE.W (A4)+,-(SP)              ;CHUNK WIDTH
+000000B2  3F14                      84      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+000000B4  508C                      85      ADDA.L #8, A4
+000000B6                            86      
+000000B6  3F14                      87      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+000000B8  0654 005A                 88      ADDI.W #90,(A4)                 ;MOVE POSITION OF CAT DOWN
+000000BC  5D8C                      89      SUBA.L #6, A4
+000000BE  3F1C                      90      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+000000C0  3F14                      91      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+000000C2  0654 005A                 92      ADDI.W  #90, (A4)               ;Shifts cat current position to lower row
+000000C6  2F08                      93      MOVE.L A0,-(SP)
+000000C8                            94      
+000000C8                            95                                      ;GameBackground was read at the start of the file, so we dont read header again
+Line 96 ERROR: Undefined symbol
+000000C8  47F9 004DBD16             96      LEA HeaderInfoBackground, A3
+Line 97 ERROR: Undefined symbol
+000000CE                            97      MOVEM.L (A3),ALL_REG
+Line 98 ERROR: Undefined symbol
+000000CE  4EB9 004DBD16             98      JSR NO_STORES
+000000D4  DFFC 00000010             99      ADDA.L #16, A7                  ;Reset Stack
+000000DA                           100      
+Line 101 ERROR: Undefined symbol
+000000DA  41F9 004DBD16            101      LEA CatRunning1, A0
+000000E0  2448                     102      MOVE.L A0,A2     
+000000E2  3018                     103      MOVE.W (A0)+, D0                ;Get header
+000000E4                           104         
+Line 105 ERROR: Undefined symbol
+000000E4  49F9 004DBD16            105      LEA SpritePositioning, A4  
+000000EA  3F14                     106      MOVE.W (A4),-(SP)               ;TOP LEFT X 
+000000EC  588C                     107      ADDA.L #4, A4
+000000EE  3F1C                     108      MOVE.W (A4)+,-(SP)              ;CHUNK WIDTH
+000000F0  3F14                     109      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+000000F2  598C                     110      SUBA.L #4, A4
+000000F4  3F14                     111      MOVE.W (A4),-(SP)               ;TOP LEFT Y 
+000000F6  5C8C                     112      ADDA.L #6, A4
+000000F8  3F1C                     113      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+000000FA  3F14                     114      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+000000FC  2F08                     115      MOVE.L A0,-(SP)
+000000FE                           116      
+Line 117 ERROR: Undefined symbol
+000000FE  4EB9 004DBD16            117       JSR    READ_THROUGH_HEADER
+00000104  DFFC 00000010            118      ADDA.L #16, A7
+Line 119 ERROR: Undefined symbol
+0000010A  6000 BC0A                119      BRA UPDATE
+0000010E                           120      
+0000010E                           121      
+0000010E                           122  MOVE_CAT_UP_CHECK    
+Line 123 ERROR: Undefined symbol
+0000010E  49F9 004DBD16            123      LEA SpritePositioning, A4
+00000114  2A4C                     124      MOVE.L A4,A5
+00000116                           125      
+00000116  D9FC 0000000A            126      ADDA.L #10, A4                  ;Y screen
+0000011C  0C54 00DC                127      CMPI.W #220,(A4)
+Line 128 ERROR: Undefined symbol
+00000120  6700 BBF4                128      BEQ UPDATE
+00000124                           129      
+00000124                           130                                      ;IF THERE IS A CAR ABOVE THE CAT, DO NOT MOVE IT
+Line 131 ERROR: Undefined symbol
+00000124  45F9 004DBD16            131      LEA CarXScreenIndex, A2
+0000012A  4287                     132      CLR.L D7
+0000012C  3E12                     133      MOVE.W (A2),D7                  ;Get the x coordinate for the car in the lower lane
+0000012E  DBC7                     134      ADDA.L D7, A5                   ;left x value of car below cat
+00000130  558C                     135      SUBA.L #2, A4                   ;Left x coordinate of cat on screen
+00000132  3214                     136      MOVE.W (A4),D1
+Line 137 ERROR: Undefined symbol
+00000134  0641 BD16                137      ADDI.W #CAT_WIDTH, D1           ;Right x coordinate of cat
+00000138  B255                     138      CMP.W (A5),D1                   ;compare left x of car with right point of cat
+Line 139 ERROR: Undefined symbol
+0000013A  6E00 BBDA                139      BGT UPDATE
+0000013E                           140      
+Line 141 ERROR: Undefined symbol
+0000013E  0481 004DBD16            141      SUBI.L #CAT_WIDTH, D1           ;Left x coordinate of cat
+00000144  4286                     142      CLR.L D6
+00000146  3C15                     143      MOVE.W (A5),D6                  ;left x coordinate of car
+00000148  598D                     144      SUBA.L #4, A5
+0000014A  DC55                     145      ADD.W (A5),D6                   ;Right x coordinate of car
+0000014C  B246                     146      CMP.W D6, D1                    ;Compare right coordinate of car with left coordinate of cat
+Line 147 ERROR: Undefined symbol
+0000014E  6E00 BBC6                147      BGT UPDATE           
+00000152                           148      
+Line 149 ERROR: Undefined symbol
+00000152  41F9 004DBD16            149      LEA GameBackground, A0
+00000158  2448                     150      MOVE.L A0,A2               
+0000015A  3018                     151      MOVE.W (A0)+, D0                ;Get header
+0000015C                           152      
+0000015C  588C                     153      ADDA.L #4, A4                   ;BITMAP X    
+0000015E  3F14                     154      MOVE.W (A4),-(SP)               ;TOP LEFT X CHUNK
+00000160  518C                     155      SUBA.L #8, A4
+00000162  3F1C                     156      MOVE.W (A4)+,-(SP)              ;CHUNK WIDTH
+00000164  3F14                     157      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+00000166  508C                     158      ADDA.L #8, A4
+00000168                           159      
+00000168  3F14                     160      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+0000016A  0454 005A                161      SUBI.W #90,(A4)                 ;MOVE POSITION OF CAT BACK UP
+0000016E  5D8C                     162      SUBA.L #6, A4
+00000170  3F1C                     163      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+00000172  3F14                     164      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+00000174  0454 005A                165      SUBI.W  #90, (A4)               ;Shifts cat current position to upper row
+00000178  2F08                     166      MOVE.L A0,-(SP)
+0000017A                           167      
+Line 168 ERROR: Undefined symbol
+0000017A  4EB9 004DBD16            168      JSR    READ_THROUGH_HEADER
+00000180  DFFC 00000010            169      ADDA.L #16, A7
+00000186                           170      
+00000186                           171      
+Line 172 ERROR: Undefined symbol
+00000186  41F9 004DBD16            172      LEA CatRunning1, A0
+0000018C  2448                     173      MOVE.L A0,A2     
+0000018E  3018                     174      MOVE.W (A0)+, D0                ;Get header
+00000190                           175      
+Line 176 ERROR: Undefined symbol
+00000190  49F9 004DBD16            176      LEA SpritePositioning, A4  
+00000196  3F14                     177      MOVE.W (A4),-(SP)               ;TOP LEFT X 
+00000198  588C                     178      ADDA.L #4, A4
+0000019A  3F1C                     179      MOVE.W (A4)+,-(SP)              ;CHUNK WIDTH
+0000019C  3F14                     180      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+0000019E  598C                     181      SUBA.L #4, A4
+000001A0  3F14                     182      MOVE.W (A4),-(SP)               ;TOP LEFT Y 
+000001A2  5C8C                     183      ADDA.L #6, A4
+000001A4  3F1C                     184      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+000001A6  3F14                     185      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+000001A8  2F08                     186      MOVE.L A0,-(SP)
+000001AA                           187      
+Line 188 ERROR: Undefined symbol
+000001AA  4EB9 004DBD16            188      JSR    READ_THROUGH_HEADER
+000001B0  DFFC 00000010            189      ADDA.L #16, A7
+Line 190 ERROR: Undefined symbol
+000001B6  6000 BB5E                190      BRA UPDATE
+000001BA                           191      
+000001BA                           192  UPDATE_CAT
+Line 193 ERROR: Undefined symbol
+000001BA  49F9 004DBD16            193      LEA SpritePositioning, A4
+000001C0  2A4C                     194      MOVE.L A4, A5
+000001C2  244C                     195      MOVE.L A4, A2
+000001C4                           196      
+Line 197 ERROR: Undefined symbol
+000001C4  45F9 004DBD16            197      LEA CatState, A2
+000001CA  0C52 0002                198      CMP.W #2,(A2)
+000001CE  6600 005A                199      BNE CAR_AND_CAT_DONT_OVERLAP
+000001D2  244C                     200      MOVE.L A4, A2
+000001D4                           201      
+000001D4                           202                                      ;IF CAT HAS NOT BEEN DRAWN INTO STATE 2 AND IS IN STATE 2, DRAW IT
+000001D4  D5FC 0000000A            203      ADDA.L #10, A2                  ;GET Y POSITION ON SCREEN
+000001DA                           204      
+Line 205 ERROR: Undefined symbol
+000001DA  0C52 BD16                205      CMP.W #HIT_TOP_Y,(A2)
+000001DE  6D00 004A                206      BLT CAR_AND_CAT_DONT_OVERLAP
+000001E2                           207  
+Line 208 ERROR: Undefined symbol
+000001E2  0C52 BD16                208      CMP.W #LOWER_LANE_Y,(A2)
+000001E6  6700 0042                209      BEQ CAR_AND_CAT_DONT_OVERLAP  
+000001EA                           210      
+000001EA                           211                                      ;IF CAT HAS ALREADY BEEN DRAWN INTO STATE 2, BUT IS STILL OVERLAPPING WITH CAR, DON'T REDRAW CAT
+000001EA  508D                     212      ADDA.L #8, A5                   ;GETS LEFT X POSITION OF CAT ON SCREEN
+000001EC  4284                     213      CLR.L D4
+000001EE  3815                     214      MOVE.W (A5),D4
+000001F0  598D                     215      SUBA.L #4, A5                   ;CAT WIDTH
+000001F2  D855                     216      ADD.W (A5),D4                   ;RIGHTMOST X POSITION OF CAT ON SCREEN
+000001F4  4287                     217      CLR.L D7
+000001F6  4286                     218      CLR.L D6
+Line 219 ERROR: Undefined symbol
+000001F8  47F9 004DBD16            219      LEA CarXScreenIndex, A3
+000001FE  3E13                     220      MOVE.W (A3),D7
+00000200  5087                     221      ADDI.L #8, D7                   ;Get overlap bool
+00000202  D9C7                     222      ADDA.L D7,A4
+00000204  0C54 0001                223      CMP.W #1,(A4)
+00000208  6700 016E                224      BEQ CAR_AND_CAT_STILL_OVERLAP  
+0000020C                           225      
+0000020C                           226      
+Line 227 ERROR: Undefined symbol
+0000020C  49F9 004DBD16            227      LEA SpritePositioning, A4       ;RESET SpritePOSITIONING
+00000212                           228                                      ;NEED TO CHECK IF OVERLAPPING WITH BOTH CARS
+Line 229 ERROR: Undefined symbol
+00000212  43F9 004DBD16            229      LEA CarXScreenIndex,A1 
+00000218  3E11                     230      MOVE.W (A1),D7
+0000021A  0647 0014                231      ADDI.W #20,D7
+0000021E  5047                     232      ADDI.W #8, D7
+00000220  D8C7                     233      ADDA D7,A4
+00000222  0C54 0001                234      CMP.W #1,(A4)
+00000226  6700 0150                235      BEQ CAR_AND_CAT_STILL_OVERLAP  
+0000022A                           236  
+0000022A                           237  
+0000022A                           238      
+0000022A                           239  CAR_AND_CAT_DONT_OVERLAP
+0000022A                           240      *Redraw BACKGROUND
+Line 241 ERROR: Undefined symbol
+0000022A  41F9 004DBD16            241      LEA GameBackground, A0
+00000230  2448                     242      MOVE.L A0,A2               
+00000232  3018                     243      MOVE.W (A0)+, D0            ;Get header
+Line 244 ERROR: Undefined symbol
+00000234  49F9 004DBD16            244      LEA SpritePositioning, A4
+0000023A                           245      
+0000023A  D9FC 0000000C            246      ADDA.L #12, A4       
+00000240  3F14                     247      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000242  518C                     248      SUBA.L #8, A4
+00000244  3F1C                     249      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000246  3F14                     250      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000248  508C                     251      ADDA.L #8, A4
+0000024A                           252      
+0000024A  3F14                     253      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+0000024C  5D8C                     254      SUBA.L #6, A4
+0000024E  3F1C                     255      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+00000250  3F14                     256      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000252  2F08                     257      MOVE.L A0,-(SP)
+00000254                           258      
+Line 259 ERROR: Undefined symbol
+00000254  0C54 BD16                259      CMPI.W #HIT_TOP_Y,(A4)
+00000258  6700 000A                260      BEQ POST_COLLISION_FIX  
+0000025C                           261      
+Line 262 ERROR: Undefined symbol
+0000025C  0C54 BD16                262      CMPI.W #HIT_BOTTOM_Y,(A4)
+00000260  6600 0016                263      BNE NO_POST_COLLISION_FIX
+00000264                           264      
+00000264                           265  POST_COLLISION_FIX    
+00000264  0454 002E                266      SUBI.W #46,(A4)             ;FIXES Y SCREEN VALUE
+00000268  588C                     267      ADDA.L #4, A4
+0000026A  0454 002E                268      SUBI.W #46,(A4)             ;FIXES Y CHUNK VALUE
+0000026E                           269      
+Line 270 ERROR: Undefined symbol
+0000026E  43F9 004DBD16            270      LEA CatState, A1 
+00000274  32BC 0000                271      MOVE.W #0, (A1)             ;cat is now in state 0
+00000278                           272  NO_POST_COLLISION_FIX
+Line 273 ERROR: Undefined symbol
+00000278  4EB9 004DBD16            273      JSR    READ_THROUGH_HEADER
+0000027E  DFFC 00000010            274      ADDA.L #16, A7
+00000284                           275  
+Line 276 ERROR: Undefined symbol
+00000284  43F9 004DBD16            276      LEA CatState, A1
+0000028A  0C51 0002                277      CMP #2, (A1)
+0000028E  6700 00AA                278      BEQ MOVE_CAT_TO_2           ;when cat is hit by car we shouldn't redraw background because car is (partially) background
+00000292                           279      
+00000292  0C51 0001                280      CMP #1, (A1)
+00000296  6700 0052                281      BEQ MOVE_CAT_TO_0
+0000029A                           282      
+0000029A                           283  MOVE_CAT_TO_1
+0000029A                           284  
+0000029A                           285      *REDRAW CAT
+Line 286 ERROR: Undefined symbol
+0000029A  41F9 004DBD16            286      LEA CatRunning2, A0
+000002A0  2448                     287      MOVE.L A0,A2     
+000002A2  3018                     288      MOVE.W (A0)+, D0            ;Get header
+000002A4                           289      
+Line 290 ERROR: Undefined symbol
+000002A4  49F9 004DBD16            290      LEA SpritePositioning, A4
+000002AA                           291  
+000002AA                           292                                  ;IF CAT AND CAR STILL OVERLAP, WAIT TILL CAR PASSES TO REDRAW CAT/BACKGROUND
+000002AA  D9FC 00000034            293      ADDA.L #52, A4
+000002B0  0C54 0001                294      CMP.W #1,(A4)
+000002B4  6700 00C2                295      BEQ CAR_AND_CAT_STILL_OVERLAP
+000002B8  99FC 00000034            296      SUBA.L #52, A4 
+000002BE                           297      
+000002BE  3F14                     298      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+000002C0  588C                     299      ADDA.L #4, A4
+000002C2  3F1C                     300      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+000002C4  3F14                     301      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+000002C6  598C                     302      SUBA.L #4, A4
+000002C8  3F14                     303      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+000002CA  5C8C                     304      ADDA.L #6, A4
+000002CC  3F1C                     305      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+000002CE  3F14                     306      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+000002D0  2F08                     307      MOVE.L A0,-(SP)
+000002D2                           308      
+Line 309 ERROR: Undefined symbol
+000002D2  4EB9 004DBD16            309      JSR    READ_THROUGH_HEADER
+000002D8  DFFC 00000010            310      ADDA.L #16, A7
+000002DE                           311      
+Line 312 ERROR: Undefined symbol
+000002DE  43F9 004DBD16            312      LEA CatState, A1 
+000002E4  32BC 0001                313      MOVE.W #1, (A1)             ;cat is now in state 1
+000002E8                           314         
+000002E8  4E75                     315      RTS
+000002EA                           316  
+000002EA                           317  MOVE_CAT_TO_0
+000002EA                           318      *REDRAW CAT
+Line 319 ERROR: Undefined symbol
+000002EA  41F9 004DBD16            319      LEA CatRunning1, A0
+000002F0  2448                     320      MOVE.L A0,A2     
+000002F2  3018                     321      MOVE.W (A0)+, D0            ;Get header
+000002F4                           322      
+Line 323 ERROR: Undefined symbol
+000002F4  49F9 004DBD16            323      LEA SpritePositioning, A4
+000002FA                           324      
+000002FA                           325                                  ;IF CAT AND CAR STILL OVERLAP, WAIT TILL CAR PASSES TO REDRAW CAT/BACKGROUND
+000002FA  D9FC 00000034            326      ADDA.L #52, A4
+00000300  0C54 0001                327      CMP.W #1,(A4)
+00000304  6700 0072                328      BEQ CAR_AND_CAT_STILL_OVERLAP
+00000308  99FC 00000034            329      SUBA.L #52, A4 
+0000030E                           330      
+0000030E  3F14                     331      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000310  588C                     332      ADDA.L #4, A4   
+00000312  3F1C                     333      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000314  3F14                     334      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000316  598C                     335      SUBA.L #4, A4
+00000318  3F14                     336      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+0000031A  5C8C                     337      ADDA.L #6, A4
+0000031C  3F1C                     338      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+0000031E  3F14                     339      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000320  2F08                     340      MOVE.L A0,-(SP)
+00000322                           341      
+Line 342 ERROR: Undefined symbol
+00000322  4EB9 004DBD16            342      JSR    READ_THROUGH_HEADER
+00000328  DFFC 00000010            343      ADDA.L #16, A7
+0000032E                           344      
+Line 345 ERROR: Undefined symbol
+0000032E  43F9 004DBD16            345      LEA CatState, A1 
+00000334  32BC 0000                346      MOVE.W #0, (A1)             ;cat is now in state 1
+00000338  4E75                     347      RTS
+0000033A                           348  
+0000033A                           349  MOVE_CAT_TO_2
+0000033A                           350      ;REDRAW CAT
+Line 351 ERROR: Undefined symbol
+0000033A  41F9 004DBD16            351      LEA CatCollision, A0
+00000340  2448                     352      MOVE.L A0,A2     
+00000342  3018                     353      MOVE.W (A0)+, D0            ;Get header
+00000344                           354      
+Line 355 ERROR: Undefined symbol
+00000344  49F9 004DBD16            355      LEA SpritePositioning, A4
+0000034A                           356      
+0000034A  3F14                     357      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+0000034C  588C                     358      ADDA.L #4, A4
+0000034E  3F1C                     359      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000350  3F14                     360      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000352  598C                     361      SUBA.L #4, A4
+00000354  3F14                     362      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+00000356  5C8C                     363      ADDA.L #6, A4
+00000358  3F1C                     364      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+0000035A  0654 002E                365      ADDI.W #46, (A4)
+0000035E  3F14                     366      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN, CAT JUMPS UP
+00000360  2F08                     367      MOVE.L A0,-(SP)
+00000362                           368      
+00000362  588C                     369      ADDA.L #4, A4
+00000364  0654 002E                370      ADDI.W #46,(A4)             ;add 50 post stack for printing background
+00000368                           371          
+Line 372 ERROR: Undefined symbol
+00000368  4EB9 004DBD16            372      JSR    READ_THROUGH_HEADER
+0000036E  DFFC 00000010            373      ADDA.L #16, A7
+00000374                           374      
+Line 375 ERROR: Undefined symbol
+00000374  6000 B9A0                375      BRA MOVE_CAR
+00000378                           376      
+00000378                           377      
+00000378                           378  CAR_AND_CAT_STILL_OVERLAP  
+00000378  4E75                     379      RTS    
+0000037A                           380  
+0000037A                           381  
+0000037A                           382  
+0000037A                           383  
+0000037A                           384  
+0000037A                           385  
+0000037A                           386  
+0000037A                           387  
+0000037A                           388  
+Line 389 WARNING: END directive missing, starting address not set
+
+61 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CAR_AND_CAT_DONT_OVERLAP  22A
+CAR_AND_CAT_STILL_OVERLAP  378
+CAT_RUNNING         0
+HEADER_WAS_READ_CAT1  44
+MOVE_CAT_DOWN_CHECK  58
+MOVE_CAT_TO_0       2EA
+MOVE_CAT_TO_1       29A
+MOVE_CAT_TO_2       33A
+MOVE_CAT_UP_CHECK   10E
+NO_POST_COLLISION_FIX  278
+POST_COLLISION_FIX  264
+UPDATE_CAT          1BA
