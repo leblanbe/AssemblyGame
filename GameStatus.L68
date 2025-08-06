@@ -1,0 +1,262 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/23/2025 1:46:03 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Game Status
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 6/2/2025
+00000000                             5  * Description: File ensures the game is still in gameplay mode.
+00000000                             6  *                Once out of gameplay mode the file resets the variables 
+00000000                             7  *                required to restart the game.
+00000000                             8  *-----------------------------------------------------------
+00000000  =00000024                  9  CAR_X_INDEX                     EQU     36 ;Used for resetting after pressing restart
+00000000  =0000002C                 10  CAR_X_SCREEN_INDEX              EQU     44      ;Used for resetting after pressing restart
+00000000  =00000002                 11  NUM_LIVES                       EQU     2
+00000000  =0000003D                 12  MOUSE_READ_COMMAND              EQU     61
+00000000                            13  
+00000000                            14  CHECK_RESTART
+00000000                            15      
+00000000  703D                      16      MOVE.L #MOUSE_READ_COMMAND, D0
+00000002  123C 0002                 17      MOVE.B #2, D1
+00000006  4E4F                      18      TRAP #15
+00000008                            19      
+Line 20 ERROR: Undefined symbol
+00000008  B27C BD16                 20      CMP.W #RESTART_BUTTON_LEFT_X, D1
+Line 21 ERROR: Undefined symbol
+0000000C  6D00 BD08                 21      BLT CHECK_GAME_LOOP_DELAY
+00000010                            22      
+Line 23 ERROR: Undefined symbol
+00000010  B27C BD16                 23      CMP.W #RESTART_BUTTON_RIGHT_X, D1
+Line 24 ERROR: Undefined symbol
+00000014  6E00 BD00                 24      BGT CHECK_GAME_LOOP_DELAY
+00000018                            25      
+00000018  4841                      26      SWAP D1
+Line 27 ERROR: Undefined symbol
+0000001A  B27C BD16                 27      CMP.W #RESTART_BUTTON_TOP_Y, D1
+Line 28 ERROR: Undefined symbol
+0000001E  6D00 BCF6                 28      BLT CHECK_GAME_LOOP_DELAY
+00000022                            29      
+Line 30 ERROR: Undefined symbol
+00000022  B27C BD16                 30      CMP.W #RESTART_BUTTON_BOTTOM_Y, D1
+Line 31 ERROR: Undefined symbol
+00000026  6E00 BCEE                 31      BGT CHECK_GAME_LOOP_DELAY
+0000002A                            32      
+Line 33 ERROR: Undefined symbol
+0000002A  4EB9 004DBD16             33      JSR LOADING_SCREEN_POST_START
+00000030  4280                      34      CLR.L D0
+00000032  4281                      35      CLR.L D1
+00000034  4282                      36      CLR.L D2
+00000036                            37      
+00000036                            38       *copies buffer
+00000036  103C 005E                 39       MOVE.B  #94,D0
+0000003A  4E4F                      40       TRAP    #15
+0000003C                            41       
+0000003C                            42       
+0000003C  7200                      43      MOVE.L #0, D1                       ;reference to background music
+Line 44 ERROR: Undefined symbol
+0000003E  203C 004DBD16             44      MOVE.L #PLAY_SOUND_COMMAND,D0
+00000044  7402                      45      MOVE.L #2, D2                       ;Stop sound
+00000046  4E4F                      46      TRAP #15
+00000048                            47      
+Line 48 ERROR: Undefined symbol
+00000048  4EB9 004DBD16             48      JSR PRINT_TOM
+0000004E                            49      
+0000004E  4EB9 000000AE             50      JSR RESET_VARIABLES
+00000054                            51      
+Line 52 ERROR: Undefined symbol
+00000054  6000 BCC0                 52      BRA START
+00000058                            53  
+00000058                            54  
+00000058                            55  CHECK_RESTART_AFTER_WIN_LOSE
+00000058  703D                      56      MOVE.L #MOUSE_READ_COMMAND, D0
+0000005A  123C 0002                 57      MOVE.B #2, D1
+0000005E  4E4F                      58      TRAP #15
+00000060                            59      
+Line 60 ERROR: Undefined symbol
+00000060  B27C BD16                 60      CMP.W #RESTART_BUTTON_LEFT_X, D1
+00000064  6DF2                      61      BLT CHECK_RESTART_AFTER_WIN_LOSE
+00000066                            62      
+Line 63 ERROR: Undefined symbol
+00000066  B27C BD16                 63      CMP.W #RESTART_BUTTON_RIGHT_X, D1
+0000006A  6EEC                      64      BGT CHECK_RESTART_AFTER_WIN_LOSE
+0000006C                            65      
+0000006C  4841                      66      SWAP D1
+Line 67 ERROR: Undefined symbol
+0000006E  B27C BD16                 67      CMP.W #RESTART_BUTTON_TOP_Y, D1
+00000072  6DE4                      68      BLT CHECK_RESTART_AFTER_WIN_LOSE
+00000074                            69      
+Line 70 ERROR: Undefined symbol
+00000074  B27C BD16                 70      CMP.W #RESTART_BUTTON_BOTTOM_Y, D1
+00000078  6EDE                      71      BGT CHECK_RESTART_AFTER_WIN_LOSE
+0000007A                            72      
+Line 73 ERROR: Undefined symbol
+0000007A  4EB9 004DBD16             73      JSR LOADING_SCREEN_POST_START
+00000080  4280                      74      CLR.L D0
+00000082  4281                      75      CLR.L D1
+00000084  4282                      76      CLR.L D2
+00000086                            77      
+00000086                            78      *copies buffer
+00000086  103C 005E                 79      MOVE.B  #94,D0
+0000008A  4E4F                      80      TRAP    #15
+0000008C                            81      
+Line 82 ERROR: Undefined symbol
+0000008C  4EB9 004DBD16             82       JSR PRINT_TOM
+00000092                            83       
+00000092                            84       *copies buffer
+00000092  103C 005E                 85       MOVE.B  #94,D0
+00000096  4E4F                      86       TRAP    #15
+00000098                            87       
+00000098  7200                      88      MOVE.L #0, D1                       ;reference to background music
+Line 89 ERROR: Undefined symbol
+0000009A  203C 004DBD16             89      MOVE.L #PLAY_SOUND_COMMAND,D0
+000000A0  7402                      90      MOVE.L #2, D2                       ;Stop sound
+000000A2  4E4F                      91      TRAP #15
+000000A4                            92      
+000000A4  4EB9 000000AE             93      JSR RESET_VARIABLES
+000000AA                            94      
+Line 95 ERROR: Undefined symbol
+000000AA  6000 BC6A                 95      BRA START
+000000AE                            96  
+000000AE                            97  RESET_VARIABLES
+Line 98 ERROR: Undefined symbol
+000000AE  41F9 004DBD16             98      LEA LivesLeft, A0
+000000B4  30BC 0002                 99      MOVE.W #NUM_LIVES,(A0)
+000000B8                           100      
+Line 101 ERROR: Undefined symbol
+000000B8  41F9 004DBD16            101      LEA JumpingCatState, A0
+000000BE  30BC 0001                102      MOVE.W #1, (A0)
+000000C2                           103      
+Line 104 ERROR: Undefined symbol
+000000C2  41F9 004DBD16            104      LEA JumpingCatVelocity, A0
+000000C8  30BC 0000                105      MOVE.W #0,(A0)
+000000CC                           106      
+Line 107 ERROR: Undefined symbol
+000000CC  41F9 004DBD16            107      LEA CatState, A0
+000000D2  30BC 0001                108      MOVE.W #1,(A0)
+000000D6                           109      
+Line 110 ERROR: Undefined symbol
+000000D6  41F9 004DBD16            110      LEA CarXIndex, A0
+000000DC  30BC 0024                111      MOVE.W #CAR_X_INDEX,(A0)
+000000E0                           112      
+Line 113 ERROR: Undefined symbol
+000000E0  41F9 004DBD16            113      LEA CarXScreenIndex, A0
+000000E6  30BC 002C                114      MOVE.W #CAR_X_SCREEN_INDEX,(A0)
+000000EA                           115      
+000000EA                           116      ;Reset the spawn times of the two cars after the first one
+Line 117 ERROR: Undefined symbol
+000000EA  41F9 004DBD16            117      LEA CarSpawnTimes, A0
+000000F0  43F9 00000174            118      LEA CarSpawnTimesReset, A1
+000000F6  30D9                     119      MOVE.W (A1)+,(A0)+
+000000F8  30D9                     120      MOVE.W (A1)+,(A0)+    
+000000FA  30D9                     121      MOVE.W (A1)+,(A0)+
+000000FC  30D9                     122      MOVE.W (A1)+,(A0)+
+000000FE                           123      
+Line 124 ERROR: Undefined symbol
+000000FE  41F9 004DBD16            124      LEA JumpingCat, A0
+00000104  43F9 0000017C            125      LEA JumpingCatReset, A1
+0000010A  30D9                     126      MOVE.W (A1)+,(A0)+
+0000010C  30D9                     127      MOVE.W (A1)+,(A0)+
+0000010E  30D9                     128      MOVE.W (A1)+,(A0)+
+00000110  3091                     129      MOVE.W (A1),(A0)
+00000112                           130      
+Line 131 ERROR: Undefined symbol
+00000112  43F9 004DBD16            131      LEA SpritePositioning, A1
+00000118  45F9 00000184            132      LEA SpritePositioningReset, A2
+0000011E                           133     
+0000011E                           134  RESET_PIXIES    
+0000011E  32DA                     135      MOVE.W (A2)+,(A1)+
+00000120  0C52 FFFF                136      CMP.W #$FFFF,(A2) ;A2 is the last variable declared, so anything after it should be untouched, or equivalent to FFFF
+00000124  66F8                     137      BNE RESET_PIXIES 
+00000126  4E75                     138      RTS
+00000128                           139  
+00000128                           140  START_SCREEN_LOOP
+00000128  703D                     141      MOVE.L #MOUSE_READ_COMMAND, D0
+0000012A  123C 0000                142      MOVE.B #0, D1
+0000012E  4E4F                     143      TRAP #15
+00000130                           144      
+Line 145 ERROR: Undefined symbol
+00000130  B27C BD16                145      CMP.W #START_BUTTON_OUTER_LEFT_X, D1
+00000134  6DF2                     146      BLT START_SCREEN_LOOP
+00000136                           147      
+Line 148 ERROR: Undefined symbol
+00000136  B27C BD16                148      CMP.W #START_BUTTON_OUTER_RIGHT_X, D1
+0000013A  6EEC                     149      BGT START_SCREEN_LOOP
+0000013C                           150      
+0000013C  4841                     151      SWAP D1
+Line 152 ERROR: Undefined symbol
+0000013E  B27C BD16                152      CMP.W #START_BUTTON_OUTER_TOP_Y, D1
+00000142  6DE4                     153      BLT START_SCREEN_LOOP
+00000144                           154      
+Line 155 ERROR: Undefined symbol
+00000144  B27C BD16                155      CMP.W #START_BUTTON_OUTER_BOTTOM_Y, D1
+00000148  6EDE                     156      BGT START_SCREEN_LOOP
+0000014A                           157      
+0000014A  4E75                     158      RTS
+0000014C                           159      
+0000014C                           160  CHECK_ARE_YOU_SURE
+0000014C  703D                     161      MOVE.L #MOUSE_READ_COMMAND, D0
+0000014E  123C 0000                162      MOVE.B #0, D1
+00000152  4E4F                     163      TRAP #15
+00000154                           164      
+Line 165 ERROR: Undefined symbol
+00000154  B27C BD16                165      CMP.W #START_BUTTON_OUTER_LEFT_X, D1
+00000158  6DF2                     166      BLT CHECK_ARE_YOU_SURE
+0000015A                           167      
+Line 168 ERROR: Undefined symbol
+0000015A  B27C BD16                168      CMP.W #ARE_YOU_SURE_OUTER_RIGHT_X, D1
+0000015E  6EEC                     169      BGT CHECK_ARE_YOU_SURE
+00000160                           170      
+00000160  4841                     171      SWAP D1
+Line 172 ERROR: Undefined symbol
+00000162  B27C BD16                172      CMP.W #START_BUTTON_OUTER_TOP_Y, D1
+00000166  6DE4                     173      BLT CHECK_ARE_YOU_SURE
+00000168                           174      
+Line 175 ERROR: Undefined symbol
+00000168  B27C BD16                175      CMP.W #START_BUTTON_OUTER_BOTTOM_Y, D1
+0000016C  6EDE                     176      BGT CHECK_ARE_YOU_SURE
+0000016E                           177      
+0000016E  4281                     178      CLR.L D1
+00000170                           179      
+00000170  4E75                     180      RTS
+00000172                           181      
+00000172                           182  paddingword4                ds.w 1
+00000174                           183  
+00000174                           184  ;used for resetting variables after restart button is pressed
+00000174                           185  CarSpawnTimesReset
+00000174                           186  *only need to reset tha values that are changed by the random number
+00000174= 01F4 0320 0352 047E      187      dc.w 500,800,    850,1150     
+0000017C                           188       
+0000017C                           189  JumpingCatReset
+0000017C= 00A5 015E 0032 011D      190      dc.w 165,350,50,285
+00000184                           191      
+00000184                           192  SpritePositioningReset
+00000184= 0000 0000 0038 0...      193      dc.w 0,0,56,51,145,220,30,155,0,    0,0,411,350,115,65,0,0,0,     0,0,75,46,526,220,411,155,0,1,     0,0,75,46,526,310,411,245,0,0
+000001D0                           194  
+000001D0                           195  
+000001D0                           196  
+000001D0                           197  
+000001D0                           198  
+Line 199 WARNING: END directive missing, starting address not set
+
+37 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CARSPAWNTIMESRESET  174
+CAR_X_INDEX         24
+CAR_X_SCREEN_INDEX  2C
+CHECK_ARE_YOU_SURE  14C
+CHECK_RESTART       0
+CHECK_RESTART_AFTER_WIN_LOSE  58
+JUMPINGCATRESET     17C
+MOUSE_READ_COMMAND  3D
+NUM_LIVES           2
+PADDINGWORD4        172
+RESET_PIXIES        11E
+RESET_VARIABLES     AE
+SPRITEPOSITIONINGRESET  184
+START_SCREEN_LOOP   128
