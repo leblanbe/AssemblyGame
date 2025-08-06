@@ -1,0 +1,337 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/20/2025 2:50:56 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :Draw Border
+00000000                             3  * Written by :Brynn LeBlanc
+00000000                             4  * Date       :6/2/2025
+00000000                             5  * Description: Responsible for rendering the visual border and interface elements of a game. 
+00000000                             6  ;                It draws all four sides of the border using filled rectangles, then overlays
+00000000                             7  ;                directional instructions and interactive UI components like the Start and Restart button. 
+00000000                             8  *-----------------------------------------------------------
+00000000                             9  COLORS
+00000000  =00FFFFFF                 10  WHITE                           EQU     $FFFFFF
+00000000  =00D4A665                 11  BORDER_COLOR                    EQU     $D4A665 
+00000000  =006F6F73                 12  OUTER_BUTTON_PEN_COLOR          EQU     $6F6F73 
+00000000  =00D9D9D9                 13  OUTER_BUTTON_FILL_COLOR         EQU     $D9D9D9
+00000000  =009F9FAA                 14  INNER_BUTTON_PEN_COLOR          EQU     $9F9FAA
+00000000  =00000000                 15  BLACK                           EQU     $000000
+00000000                            16  
+00000000                            17  *COMMANDS
+00000000  =0000005D                 18  SET_PEN_WIDTH_COMMAND           EQU     93
+00000000  =00000057                 19  DRAW_FILLED_RECTANGLE_COMMAND   EQU     87
+00000000  =00000051                 20  SET_FILL_COLOR_COMMAND          EQU     81
+00000000  =00000050                 21  SET_PEN_COLOR_COMMAND           EQU     80
+00000000  =00000015                 22  SET_FONT_COMMAND                EQU     21
+00000000                            23  
+00000000                            24  
+00000000                            25  *DIMENSIONS
+00000000  =00000000                 26  LEFT_BORDER_LEFT_X              EQU     0
+00000000  =00000073                 27  LEFT_BORDER_RIGHT_X             EQU     115
+00000000  =000001E0                 28  LEFT_BORDER_BOTTOM_Y            EQU     480
+00000000  =000002A8                 29  TOP_BORDER_RIGHT_X              EQU     680
+00000000  =00000041                 30  TOP_BORDER_BOTTOM_Y             EQU     65
+00000000  =0000020E                 31  RIGHT_BORDER_LEFT_X             EQU     526
+00000000  =0000019F                 32  BOTTOM_BORDER_TOP_Y             EQU     415
+00000000                            33  
+00000000  =00000000                 34  DIRECTIONS_TOP_X                EQU     0
+00000000  =00000000                 35  DIRECTIONS_TOP_Y                EQU     0
+00000000  =0000012E                 36  DIRECTIONS_TOP_WIDTH            EQU     302
+00000000  =0000001B                 37  DIRECTIONS_TOP_HEIGHT           EQU     27
+00000000  =000000A9                 38  DIRECTIONS_TOP_SCREEN_X         EQU     169
+00000000  =00000013                 39  DIRECTIONS_TOP_SCREEN_Y         EQU     19
+00000000  =00000000                 40  DIRECTIONS_BOTTOM_X             EQU     0
+00000000  =00000000                 41  DIRECTIONS_BOTTOM_Y             EQU     0
+00000000  =0000027B                 42  DIRECTIONS_BOTTOM_WIDTH         EQU     635
+00000000  =0000001A                 43  DIRECTIONS_BOTTOM_HEIGHT        EQU     26
+00000000  =00000002                 44  DIRECTIONS_BOTTOM_SCREEN_X      EQU     2
+00000000  =000001B2                 45  DIRECTIONS_BOTTOM_SCREEN_Y      EQU     434
+00000000                            46  
+00000000  =00000002                 47  START_BOX_LINE_WIDTH            EQU     2
+00000000  =00000111                 48  START_BUTTON_INNER_LEFT_X       EQU     273
+00000000  =00000111                 49  START_BUTTON_INNER_TOP_Y        EQU     273
+00000000  =0000016F                 50  START_BUTTON_INNER_RIGHT_X      EQU     367
+00000000  =0000012A                 51  START_BUTTON_INNER_BOTTOM_Y     EQU     298
+00000000  =00000125                 52  START_BUTTON_TEXT_X             EQU     293
+00000000  =00000112                 53  START_BUTTON_TEXT_Y             EQU     274
+00000000                            54  
+00000000  =00000113                 55  LIVES_TEXT_X                    EQU     275
+00000000  =0000001E                 56  LIVES_TEXT_Y                    EQU     30
+00000000                            57  
+00000000  =0000023F                 58  RESTART_BUTTON_TEXT_X           EQU     575
+00000000  =0000000A                 59  RESTART_BUTTON_TEXT_Y           EQU     10
+00000000  =00000247                 60  RESTART_BUTTON_LEFT_X           EQU     583
+00000000  =0000000A                 61  RESTART_BUTTON_TOP_Y            EQU     10
+00000000  =0000027E                 62  RESTART_BUTTON_RIGHT_X          EQU     638
+00000000  =00000019                 63  RESTART_BUTTON_BOTTOM_Y         EQU     25
+00000000                            64  
+00000000                            65  
+00000000  =00000118                 66  LOADING_TEXT_X                  EQU     280
+00000000                            67  
+00000000                            68  DRAW_BORDER 
+00000000                            69      ;Set pen color   
+00000000  223C 00D4A665             70      MOVE.L  #BORDER_COLOR,D1
+00000006  103C 0050                 71      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+0000000A  4E4F                      72      TRAP    #15
+0000000C                            73      
+0000000C                            74      ;Set fill color 
+0000000C  103C 0051                 75      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+00000010  223C 00D4A665             76      MOVE.L #BORDER_COLOR, D1
+00000016  4E4F                      77      TRAP #15
+00000018                            78      
+00000018                            79      ;draw lefthand side
+00000018  323C 0000                 80      MOVE.W  #LEFT_BORDER_LEFT_X,D1
+0000001C  343C 0000                 81      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+00000020  363C 0073                 82      MOVE.W  #LEFT_BORDER_RIGHT_X,D3
+00000024  383C 01E0                 83      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+00000028  103C 0057                 84      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+0000002C  4E4F                      85      TRAP    #15
+0000002E                            86      
+0000002E                            87      ;draw top side
+0000002E  323C 0073                 88      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+00000032  343C 0000                 89      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+00000036  363C 02A8                 90      MOVE.W  #TOP_BORDER_RIGHT_X,D3
+0000003A  383C 0041                 91      MOVE.W  #TOP_BORDER_BOTTOM_Y,D4
+0000003E  103C 0057                 92      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00000042  4E4F                      93      TRAP    #15
+00000044                            94      
+00000044                            95      ;draw righthand side
+00000044  323C 020E                 96      MOVE.W  #RIGHT_BORDER_LEFT_X,D1
+00000048  343C 0041                 97      MOVE.W  #TOP_BORDER_BOTTOM_Y,D2
+0000004C  363C 02A8                 98      MOVE.W  #TOP_BORDER_RIGHT_X,D3
+00000050  383C 01E0                 99      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+00000054  103C 0057                100      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00000058  4E4F                     101      TRAP    #15
+0000005A                           102      
+0000005A                           103      ;draw bottom side
+0000005A  323C 0073                104      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+0000005E  343C 019F                105      MOVE.W  #BOTTOM_BORDER_TOP_Y,D2
+00000062  363C 020E                106      MOVE.W  #RIGHT_BORDER_LEFT_X,D3
+00000066  383C 01E0                107      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+0000006A  103C 0057                108      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+0000006E  4E4F                     109      TRAP    #15
+00000070                           110      
+00000070  7200                     111      MOVE.L #BLACK, D1
+00000072  4282                     112      CLR.L D2
+00000074  143C 0006                113      MOVE.B #6, D2       ;FONT STYLE
+00000078  E14A                     114      LSL #8, D2
+0000007A  143C 000A                115      MOVE.B #10, D2      ;FONT SIZE
+0000007E  E18A                     116      LSL.L #8, D2
+00000080  E18A                     117      LSL.L #8, D2
+00000082                           118      
+00000082  7015                     119      MOVE.L #SET_FONT_COMMAND, D0
+00000084  4E4F                     120      TRAP    #15
+00000086                           121  
+Line 122 ERROR: Undefined symbol
+00000086  41F9 004DBD16            122      LEA DirectionsTop, A0   
+0000008C                           123      
+0000008C  323C 0000                124      MOVE.W #DIRECTIONS_TOP_X, D1
+00000090  343C 0000                125      MOVE.W #DIRECTIONS_TOP_Y, D2
+Line 126 ERROR: Undefined symbol
+00000094  203C 004DBD16            126      MOVE.L #DRAW_TEXT_COMMAND, D0
+0000009A  4E4F                     127      TRAP #15
+0000009C                           128       
+Line 129 ERROR: Undefined symbol
+0000009C  41F9 004DBD16            129      LEA DirectionsBottom, A0   
+000000A2                           130      
+000000A2  323C 0000                131      MOVE.W #DIRECTIONS_BOTTOM_X, D1
+000000A6  343C 0000                132      MOVE.W #DIRECTIONS_BOTTOM_Y, D2
+000000AA  4E4F                     133      TRAP #15
+000000AC                           134      
+000000AC  223C 006F6F73            135      MOVE.L #OUTER_BUTTON_PEN_COLOR, D1
+000000B2  7050                     136      MOVE.L #SET_PEN_COLOR_COMMAND, D0
+000000B4  4E4F                     137      TRAP #15
+000000B6                           138      
+000000B6  7202                     139      MOVE.L  #START_BOX_LINE_WIDTH,D1
+000000B8  103C 005D                140      MOVE.B  #SET_PEN_WIDTH_COMMAND,D0
+000000BC  4E4F                     141      TRAP    #15
+000000BE                           142      
+000000BE  223C 00D9D9D9            143      MOVE.L #OUTER_BUTTON_FILL_COLOR, D1
+000000C4  7051                     144      MOVE.L #SET_FILL_COLOR_COMMAND, D0
+000000C6  4E4F                     145      TRAP #15
+000000C8                           146      
+Line 147 ERROR: Undefined symbol
+000000C8  323C BD16                147      MOVE.W  #START_BUTTON_OUTER_LEFT_X ,D1
+Line 148 ERROR: Undefined symbol
+000000CC  343C BD16                148      MOVE.W  #START_BUTTON_OUTER_TOP_Y ,D2
+Line 149 ERROR: Undefined symbol
+000000D0  363C BD16                149      MOVE.W  #START_BUTTON_OUTER_RIGHT_X,D3
+Line 150 ERROR: Undefined symbol
+000000D4  383C BD16                150      MOVE.W  #START_BUTTON_OUTER_BOTTOM_Y,D4
+000000D8  103C 0057                151      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000000DC  4E4F                     152      TRAP    #15
+000000DE                           153      
+000000DE  223C 009F9FAA            154      MOVE.L #INNER_BUTTON_PEN_COLOR, D1
+000000E4  7050                     155      MOVE.L #SET_PEN_COLOR_COMMAND, D0
+000000E6  4E4F                     156      TRAP #15
+000000E8                           157      
+000000E8  223C 00FFFFFF            158      MOVE.L #WHITE, D1
+000000EE  7051                     159      MOVE.L #SET_FILL_COLOR_COMMAND, D0
+000000F0  4E4F                     160      TRAP #15
+000000F2                           161      
+000000F2  323C 0111                162      MOVE.W  #START_BUTTON_INNER_LEFT_X ,D1
+000000F6  343C 0111                163      MOVE.W  #START_BUTTON_INNER_TOP_Y ,D2
+000000FA  363C 016F                164      MOVE.W  #START_BUTTON_INNER_RIGHT_X,D3
+000000FE  383C 012A                165      MOVE.W  #START_BUTTON_INNER_BOTTOM_Y,D4
+00000102  103C 0057                166      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00000106  4E4F                     167      TRAP    #15
+00000108                           168      
+00000108  7200                     169      MOVE.L #BLACK, D1
+0000010A  4282                     170      CLR.L D2
+0000010C  143C 0006                171      MOVE.B #6, D2
+00000110  E14A                     172      LSL #8, D2
+00000112  143C 000E                173      MOVE.B #14, D2
+00000116  E18A                     174      LSL.L #8, D2
+00000118  E18A                     175      LSL.L #8, D2
+0000011A                           176      
+0000011A  7015                     177      MOVE.L #SET_FONT_COMMAND, D0
+0000011C  4E4F                     178      TRAP    #15
+0000011E                           179      
+Line 180 ERROR: Undefined symbol
+0000011E  43F9 004DBD16            180      LEA StartText,A1
+00000124  323C 0125                181      MOVE.W #START_BUTTON_TEXT_X, D1
+00000128  343C 0112                182      MOVE.W #START_BUTTON_TEXT_Y, D2
+Line 183 ERROR: Undefined symbol
+0000012C  203C 004DBD16            183      MOVE.L #DRAW_TEXT_COMMAND, D0
+00000132  4E4F                     184      TRAP #15
+00000134                           185      
+00000134                           186      *MODIFYING RESTART BUTTON FONT
+00000134  E04A                     187      LSR #8, D2
+00000136  E04A                     188      LSR #8, D2
+00000138  143C 000A                189      MOVE.B #10, D2  ;FONT SIZE
+0000013C  E18A                     190      LSL.L #8, D2
+0000013E  E18A                     191      LSL.L #8, D2 
+00000140                           192      
+00000140  7015                     193      MOVE.L #SET_FONT_COMMAND, D0
+00000142  4E4F                     194      TRAP    #15
+00000144                           195      
+Line 196 ERROR: Undefined symbol
+00000144  43F9 004DBD16            196      LEA RestartText, A1
+0000014A  323C 023F                197      MOVE.W #RESTART_BUTTON_TEXT_X, D1
+0000014E  343C 000A                198      MOVE.W #RESTART_BUTTON_TEXT_Y, D2
+Line 199 ERROR: Undefined symbol
+00000152  203C 004DBD16            199      MOVE.L #DRAW_TEXT_COMMAND, D0
+00000158  4E4F                     200      TRAP #15
+0000015A                           201  
+0000015A  4E75                     202      RTS
+0000015C                           203      
+0000015C                           204      
+0000015C                           205  CLEAR_DIRECTIONS
+0000015C                           206      ;Set pen color   
+0000015C  223C 00D4A665            207      MOVE.L  #BORDER_COLOR,D1
+00000162  103C 0050                208      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+00000166  4E4F                     209      TRAP    #15
+00000168                           210      
+00000168                           211      ;Set fill color 
+00000168  103C 0051                212      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+0000016C  4E4F                     213      TRAP #15
+0000016E                           214       
+0000016E                           215      ;draw top side
+0000016E  323C 0073                216      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+00000172  343C 0000                217      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+00000176  363C 020E                218      MOVE.W  #RIGHT_BORDER_LEFT_X,D3
+0000017A  383C 0041                219      MOVE.W  #TOP_BORDER_BOTTOM_Y,D4
+0000017E  103C 0057                220      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00000182  4E4F                     221      TRAP    #15
+00000184                           222      
+00000184                           223      ;draw bottom side
+00000184  323C 0000                224      MOVE.W  #LEFT_BORDER_LEFT_X,D1
+00000188  343C 019F                225      MOVE.W  #BOTTOM_BORDER_TOP_Y,D2
+0000018C  363C 02A8                226      MOVE.W  #TOP_BORDER_RIGHT_X ,D3
+00000190  383C 01E0                227      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+00000194  103C 0057                228      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00000198  4E4F                     229      TRAP    #15
+0000019A                           230      
+0000019A  4E75                     231      RTS
+0000019C                           232  
+0000019C                           233  
+0000019C                           234  PRINT_LIVES
+0000019C                           235      ;Set fill color
+0000019C  223C 00D4A665            236      MOVE.L  #BORDER_COLOR,D1 
+000001A2  103C 0051                237      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+000001A6  4E4F                     238      TRAP #15
+000001A8                           239      
+Line 240 ERROR: Undefined symbol
+000001A8  43F9 004DBD16            240      LEA LivesText,A1
+000001AE  323C 0113                241      MOVE.W #LIVES_TEXT_X, D1
+000001B2  343C 001E                242      MOVE.W #LIVES_TEXT_Y, D2
+Line 243 ERROR: Undefined symbol
+000001B6  203C 004DBD16            243      MOVE.L #DRAW_TEXT_COMMAND, D0
+000001BC  4E4F                     244      TRAP #15
+000001BE  4E75                     245      RTS
+000001C0                           246      
+000001C0                           247  
+000001C0                           248  
+000001C0                           249  
+000001C0                           250  
+000001C0                           251  
+000001C0                           252  
+000001C0                           253  
+000001C0                           254  
+000001C0                           255  
+000001C0                           256  
+000001C0                           257  
+000001C0                           258  
+000001C0                           259  
+000001C0                           260  
+000001C0                           261  
+Line 262 WARNING: END directive missing, starting address not set
+
+13 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BLACK               0
+BORDER_COLOR        D4A665
+BOTTOM_BORDER_TOP_Y  19F
+CLEAR_DIRECTIONS    15C
+COLORS              0
+DIRECTIONS_BOTTOM_HEIGHT  1A
+DIRECTIONS_BOTTOM_SCREEN_X  2
+DIRECTIONS_BOTTOM_SCREEN_Y  1B2
+DIRECTIONS_BOTTOM_WIDTH  27B
+DIRECTIONS_BOTTOM_X  0
+DIRECTIONS_BOTTOM_Y  0
+DIRECTIONS_TOP_HEIGHT  1B
+DIRECTIONS_TOP_SCREEN_X  A9
+DIRECTIONS_TOP_SCREEN_Y  13
+DIRECTIONS_TOP_WIDTH  12E
+DIRECTIONS_TOP_X    0
+DIRECTIONS_TOP_Y    0
+DRAW_BORDER         0
+DRAW_FILLED_RECTANGLE_COMMAND  57
+INNER_BUTTON_PEN_COLOR  9F9FAA
+LEFT_BORDER_BOTTOM_Y  1E0
+LEFT_BORDER_LEFT_X  0
+LEFT_BORDER_RIGHT_X  73
+LIVES_TEXT_X        113
+LIVES_TEXT_Y        1E
+LOADING_TEXT_X      118
+OUTER_BUTTON_FILL_COLOR  D9D9D9
+OUTER_BUTTON_PEN_COLOR  6F6F73
+PRINT_LIVES         19C
+RESTART_BUTTON_BOTTOM_Y  19
+RESTART_BUTTON_LEFT_X  247
+RESTART_BUTTON_RIGHT_X  27E
+RESTART_BUTTON_TEXT_X  23F
+RESTART_BUTTON_TEXT_Y  A
+RESTART_BUTTON_TOP_Y  A
+RIGHT_BORDER_LEFT_X  20E
+SET_FILL_COLOR_COMMAND  51
+SET_FONT_COMMAND    15
+SET_PEN_COLOR_COMMAND  50
+SET_PEN_WIDTH_COMMAND  5D
+START_BOX_LINE_WIDTH  2
+START_BUTTON_INNER_BOTTOM_Y  12A
+START_BUTTON_INNER_LEFT_X  111
+START_BUTTON_INNER_RIGHT_X  16F
+START_BUTTON_INNER_TOP_Y  111
+START_BUTTON_TEXT_X  125
+START_BUTTON_TEXT_Y  112
+TOP_BORDER_BOTTOM_Y  41
+TOP_BORDER_RIGHT_X  2A8
+WHITE               FFFFFF

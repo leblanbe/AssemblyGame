@@ -1,0 +1,92 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/16/2025 10:19:37 AM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : SoundManager
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 6/6/2025
+00000000                             5  * Description: 
+00000000                             6  *-----------------------------------------------------------
+00000000                             7  
+00000000                             8  PLAY_BACKGROUND_MUSIC
+00000000  4281                       9      CLR.L D1
+Line 10 ERROR: Undefined symbol
+00000002  43F9 004DBD16             10      LEA BackgroundMusic, A1
+Line 11 ERROR: Undefined symbol
+00000008  203C 004DBD16             11      MOVE.L #LOAD_SOUND_COMMAND, D0
+0000000E  4E4F                      12      TRAP #15
+00000010                            13      
+Line 14 ERROR: Undefined symbol
+00000010  203C 004DBD16             14      MOVE.L #PLAY_SOUND_COMMAND,D0
+00000016  7400                      15      MOVE.L #0, D2                       ;Play sound once
+00000018  4E4F                      16      TRAP #15
+0000001A  4E75                      17      RTS
+0000001C                            18  STOP_BACKGROUND_MUSIC
+0000001C  7200                      19      MOVE.L #0, D1                       ;reference to background music
+Line 20 ERROR: Undefined symbol
+0000001E  203C 004DBD16             20      MOVE.L #PLAY_SOUND_COMMAND,D0
+00000024  7402                      21      MOVE.L #2, D2                       ;Stop all sounds 
+00000026  4E4F                      22      TRAP #15
+00000028  4E75                      23      RTS
+0000002A                            24      
+0000002A                            25  CAT_SCREAM
+0000002A  4281                      26      CLR.L D1
+0000002C  7201                      27      MOVE.L #1, D1                       ;Loading sound into index 1
+Line 28 ERROR: Undefined symbol
+0000002E  43F9 004DBD16             28      LEA CatScream, A1
+Line 29 ERROR: Undefined symbol
+00000034  203C 004DBD16             29      MOVE.L #LOAD_SOUND_COMMAND, D0
+0000003A  4E4F                      30      TRAP #15
+0000003C                            31      
+Line 32 ERROR: Undefined symbol
+0000003C  203C 004DBD16             32      MOVE.L #PLAY_SOUND_COMMAND,D0
+00000042  7400                      33      MOVE.L #0, D2                       ;Play sound once
+00000044  4E4F                      34      TRAP #15
+00000046  4E75                      35      RTS
+00000048                            36      
+00000048                            37  WIN_SOUND
+00000048  4281                      38      CLR.L D1
+0000004A  7202                      39      MOVE.L #2, D1                       ;Loading sound into index 2
+Line 40 ERROR: Undefined symbol
+0000004C  43F9 004DBD16             40      LEA GameWin, A1
+Line 41 ERROR: Undefined symbol
+00000052  203C 004DBD16             41      MOVE.L #LOAD_SOUND_COMMAND, D0
+00000058  4E4F                      42      TRAP #15
+0000005A                            43      
+Line 44 ERROR: Undefined symbol
+0000005A  203C 004DBD16             44      MOVE.L #PLAY_SOUND_COMMAND,D0
+00000060  7400                      45      MOVE.L #0, D2                       ;Play sound once
+00000062  4E4F                      46      TRAP #15
+00000064  4E75                      47      RTS
+00000066                            48      
+00000066                            49  LOSE_SOUND
+00000066  4281                      50      CLR.L D1
+00000068  7203                      51      MOVE.L #3, D1                       ;Loading sound into index 3
+Line 52 ERROR: Undefined symbol
+0000006A  43F9 004DBD16             52      LEA GameOver, A1
+Line 53 ERROR: Undefined symbol
+00000070  203C 004DBD16             53      MOVE.L #LOAD_SOUND_COMMAND, D0
+00000076  4E4F                      54      TRAP #15
+00000078                            55      
+Line 56 ERROR: Undefined symbol
+00000078  203C 004DBD16             56      MOVE.L #PLAY_SOUND_COMMAND,D0
+0000007E  7400                      57      MOVE.L #0, D2                       ;Play sound once
+00000080  4E4F                      58      TRAP #15
+00000082  4E75                      59      RTS
+00000084                            60      
+00000084                            61  
+Line 62 WARNING: END directive missing, starting address not set
+
+13 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CAT_SCREAM          2A
+LOSE_SOUND          66
+PLAY_BACKGROUND_MUSIC  0
+STOP_BACKGROUND_MUSIC  1C
+WIN_SOUND           48

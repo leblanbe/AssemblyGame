@@ -1,0 +1,2737 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/24/2025 9:48:33 AM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Mittens on the Move
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 5/30
+00000000                             5  * Description: Mittens on the Move is a 68k assembly game where players control 
+00000000                             6  ;                a cat attempting to cross a busy road by jumping between lanes to 
+00000000                             7  ;                avoid oncoming vehicles. The game features animated bitmap graphics, 
+00000000                             8  ;                interactive start and win/lose screens, sound effects, a seven-segment 
+00000000                             9  ;                display for lives, and precise collision and time-based mechanics. The 
+00000000                            10  ;                main file initializes memory and game constants, handles input, manages
+00000000                            11  ;                cat and car updates, detects win/loss conditions, and integrates supporting
+00000000                            12  ;                modules for graphics, sound, and logic control.
+00000000                            13  *-----------------------------------------------------------
+00000500                            14      ORG    $500
+00000500                            15  *User input
+00000500  =FF000000                 16  UP                              EQU     $FF000000
+00000500  =000000FF                 17  DOWN                            EQU     $000000FF
+00000500                            18  
+00000500                            19  *Commands
+00000500  =00000008                 20  GET_TIME_COMMAND                EQU     8
+00000500  =0000000D                 21  PRINT_STRING_CR_LF              EQU     13
+00000500  =0000000E                 22  DISPLAY_STRING_COMMAND          EQU     14
+00000500  =00000013                 23  KEY_INPUT_COMMAND               EQU     19
+00000500  =0000005F                 24  DRAW_TEXT_COMMAND               EQU     95
+00000500  =0000005C                 25  SET_DOUBLE_BUFFER               EQU     92
+00000500  =0000005E                 26  COPY_DOUBLE_BUFFER              EQU     94
+00000500                            27  
+00000500                            28  *registers
+00000500                            29  ALL_REG         REG     D0-D7/A0-A6
+00000500                            30  HEADER_REG      REG     D0-D1/D4-D7/A0-A4/A6
+00000500                            31  
+00000500                            32  
+00001000                            33      ORG    $1000
+00001000                            34  START:
+00001000  4EB9 00007770             35      JSR DISPLAY_LOADING
+00001006                            36      
+00001006  4EB9 00007760             37      JSR SET_BUFFER
+0000100C                            38      
+0000100C  41F9 0009C422             39      LEA StartScreen, A0         ;Bitmap to be displayed is passed in as a paramter in a0 
+00001012                            40      
+00001012  4EB9 00006FB8             41      JSR BACKGROUND_START        ;Prints a full bitmap to the screen not including the border
+00001018                            42      
+00001018  4EB9 0000757E             43      JSR DRAW_BORDER             ;Draws the blue border around the play screen 
+0000101E                            44      
+0000101E  4EB9 00001474             45      JSR JUMPING_CAT_START_SCREEN 
+00001024                            46       
+00001024  4EB9 00007CF0             47      JSR START_SCREEN_LOOP       ;loop that continuously checks for the start button to have been pressed, once pressed, we enter the game
+0000102A                            48  
+0000102A                            49  ENTER_GAME
+0000102A  4EB9 000076D2             50      JSR CLEAR_DIRECTIONS        
+00001030                            51      
+00001030  4EB9 00007066             52      JSR LOADING_SCREEN_POST_START
+00001036                            53      
+00001036  4EB9 00007768             54      JSR COPY_BUFFER
+0000103C                            55       
+0000103C                            56      ;Print number of lives left
+0000103C  4EB9 00007712             57      JSR PRINT_LIVES_TEXT
+00001042                            58      
+00001042  41F9 0000754E             59      LEA LivesLeft, A0
+00001048  3E10                      60      MOVE.W (A0),D7
+0000104A  4EB9 000079E2             61      JSR LOAD_SS
+00001050                            62      
+00001050  4EB9 00007732             63      JSR PRINT_GAMEPLAY_TIPS
+00001056                            64      
+00001056  4EB9 00007AB2             65      JSR GET_RANDOM_NUM          ;Assigns semi-random spawn times for cars 2 and 3 by getting a random number
+0000105C                            66      
+0000105C  4280                      67      CLR.L D0
+0000105E  227C 00000000             68      MOVE.L #0, A1
+00001064                            69      
+00001064  41F9 00007DA4             70      LEA GameBackground, A0
+0000106A  4EB9 00006FB8             71      JSR BACKGROUND_START        
+00001070                            72      
+00001070  41F9 00001600             73      LEA CatRunningFrame1, A0
+00001076  4EB9 0000127A             74      JSR DRAW_CAT 
+0000107C                            75      
+0000107C  4EB9 00007768             76      JSR COPY_BUFFER
+00001082                            77      
+00001082  4EB9 00007904             78      JSR PLAY_BACKGROUND_MUSIC
+00001088                            79      
+00001088  4EB9 00007B8C             80      JSR GET_GAME_START_TIME
+0000108E                            81  
+0000108E                            82  GAME_LOOP 
+0000108E  4EB9 00007BB6             83      JSR HANDLE_USER_INPUT
+00001094                            84      
+00001094                            85  UPDATE
+00001094  4EB9 00007B56             86      JSR GET_DELTA_TIME_TOTAL
+0000109A                            87      
+0000109A  43F9 0028FB08             88      LEA WinTime, A1                 ;There is a set amount of time per level
+000010A0  2411                      89      MOVE.L (A1),D2
+000010A2  B282                      90      CMP.L D2,D1
+000010A4  6E00 5F46                 91      BGT WIN_SCREEN
+000010A8                            92  
+000010A8  4EB9 00001374             93      JSR UPDATE_CAT
+000010AE                            94      
+000010AE  4EB9 00007B38             95      JSR GET_DELTA_TIME_LOOP
+000010B4                            96  
+000010B4  4EB9 000071D6             97      JSR UPDATE_CAR                  ;UPDATE CAR 1 (upper lane)
+000010BA                            98      
+000010BA  4EB9 00007536             99      JSR INCREASE_CAR_POINTER
+000010C0                           100      
+000010C0  4EB9 000071D6            101      JSR UPDATE_CAR                  ;UPDATE CAR 2 (lower lane)
+000010C6                           102         
+000010C6  4EB9 00007768            103      JSR COPY_BUFFER
+000010CC                           104  
+000010CC  4EB9 00007B56            105      JSR GET_DELTA_TIME_TOTAL
+000010D2                           106      
+000010D2  4EB9 00007490            107      JSR SPAWN_CARS
+000010D8                           108      
+000010D8  4EB9 00007520            109      JSR DECREASE_CAR_POINTER
+000010DE                           110     
+000010DE  6000 6B00                111      BRA CHECK_RESTART
+000010E2                           112  
+000010E2                           113       
+000010E2                           114  WRONG_SIGNATURE
+000010E2  43F9 0028FACA            115      LEA     ErrorMessage_WrongSignature, A1
+000010E8  700D                     116      MOVE.L  #PRINT_STRING_CR_LF,D0
+000010EA  4E4F                     117      TRAP    #15
+000010EC  FFFF FFFF                118      SIMHALT
+000010F0                           119  
+000010F0                           120      INCLUDE HeaderCalculations.X68
+000010F0  =00000000                121  TOP_LEFT_X_BITMAP_CHUNK         EQU     0
+000010F0  =00000000                122  TOP_LEFT_Y_BITMAP_CHUNK         EQU     0
+000010F0  =00000010                123  CHUNK_WIDTH_INDEX               EQU     16
+000010F0  =0000000E                124  CHUNK_HEIGHT_INDEX              EQU     14
+000010F0  =00000020                125  THIRTHY_TWO_BITS                EQU     32
+000010F0                           126  
+000010F0                           127  READ_THROUGH_HEADER
+000010F0                           128      
+000010F0  5088                     129      ADDA.L #8, A0                                   ;Pass up the size of the file and the reserved data
+000010F2  2018                     130      MOVE.L (A0)+, D0                                ;the offset of the file
+000010F4  2248                     131      MOVE.L A0, A1    
+000010F6                           132      
+000010F6  2E00                     133      MOVE.L D0, D7                                   ;convert offset to big endian
+000010F8  4EB9 000011DA            134      JSR CONVERT_LONG_LE_TO_BE
+000010FE  2007                     135      MOVE.L D7, D0
+00001100                           136      
+00001100  220A                     137      MOVE.L A2, D1       
+00001102  247C 00000000            138      MOVE.L #0, A2
+00001108  D280                     139      ADD.L D0, D1                                    ;add offset to starting file location
+0000110A  2041                     140      MOVE.L D1, A0                                   ;Get the start of the colors
+0000110C                           141      
+0000110C  5889                     142      ADDA.L #4, A1                                   ;pass over the size of the header
+0000110E  2E19                     143      MOVE.L (A1)+, D7                                ;Bitmap width 
+00001110  4EB9 000011DA            144      JSR CONVERT_LONG_LE_TO_BE
+00001116  2A07                     145      MOVE.L D7,D5
+00001118  2207                     146      MOVE.L D7,D1
+0000111A                           147      
+0000111A  CE7C 0003                148      AND #3, d7                                      ;BITHMAP WIDTH / 4 remainder for padding
+0000111E  2647                     149      MOVE.L D7, A3                                   ;A3 is padding
+00001120                           150  
+00001120  3C05                     151      MOVE.W D5, D6                                   ;used for calculating pixels between end of chunk and bitmap
+00001122                           152      
+00001122  386F 0012                153      MOVE.W TOP_LEFT_X_BITMAP_CHUNK_INDEX(SP),A4     ;Top LEFT x value bitmap chunk
+00001126  360C                     154      MOVE.W A4, D3
+00001128  3C6F 0010                155      MOVE.W CHUNK_WIDTH_INDEX(SP),A6                 ;CHUNK WIDTH
+0000112C  344E                     156      MOVE.W A6, A2
+0000112E  3E0E                     157      MOVE.W A6,D7
+00001130  DE83                     158      ADD.L D3,D7                                     ;TOP_RIGHT X VALUE
+00001132  9C87                     159      SUB.L D7,D6                                     ;pixels between end of chunk and bitmap
+00001134  DC83                     160      ADD.L D3, D6                                    ;pixels between end of chunk and bitmap ON BOTH ENDS
+00001136                           161  
+00001136  3A6F 000A                162      MOVE.W TOP_LEFT_X_SCREEN_INDEX(SP),A5           ;X COORDINATE OF SCREEN
+0000113A  360D                     163      MOVE.W A5, D3
+0000113C  2E19                     164      MOVE.L (A1)+, D7                                ;Bitmap height
+0000113E  5489                     165      ADDA.L #2, A1                                   ;pass over number of color planes
+00001140  4EB9 000011DA            166      JSR CONVERT_LONG_LE_TO_BE                       ;Convert to big endian
+00001146  2807                     167      MOVE.L D7, D4                                   ;BITMAP height
+00001148  4282                     168      CLR.L D2
+0000114A  342F 000C                169      MOVE.W TOP_LEFT_Y_BITMAP_CHUNK_INDEX(SP),D2     ;TOP LEFT Y VALUE CHUNK
+0000114E  3E2F 000E                170      MOVE.W CHUNK_HEIGHT_INDEX(SP),D7                ;CHUNK HEIGHT
+00001152  D487                     171      ADD.L D7, D2                                    ;BOTTOM LEFT Y VALUE SCREEN
+00001154                           172      
+00001154  9882                     173      SUB.L D2,D4                                     ;Distance between BOTTOM of bitmap and BOTTOM of chunk
+00001156  CAC4                     174      MULU D4,D5                                      ;gets the number of pixels passed over below the chunk
+00001158                           175      
+00001158  4281                     176      CLR.L D1
+0000115A  3219                     177      MOVE.W (A1)+,D1                                 ;Get number of bits per pixel
+0000115C  E059                     178      ROR.W #8, D1                                    ;Convert to big endian
+0000115E                           179       
+0000115E  4287                     180      CLR.L D7
+00001160  3E0C                     181      MOVE.W A4,D7                                    ;top left x bitmap
+00001162  DA87                     182      ADD.L D7, D5                                    ;Number of pixels passed over below the chunk plus the first row
+00001164                           183      
+00001164  342F 0008                184      MOVE.W TOP_LEFT_Y_SCREEN_INDEX(SP),D2
+00001168  3E2F 000E                185      MOVE.W CHUNK_HEIGHT_INDEX(SP),D7
+0000116C  D487                     186      ADD.L D7, D2                                    ;BOTTOM Y-SCREEN VALUE
+0000116E                           187             
+0000116E  3847                     188      MOVE.W D7,A4                                    ;BITMAP HEIGHT
+00001170  538C                     189      SUBA.L #1, A4                                   ;for dbra in bitmap subroutine
+00001172                           190      
+00001172                           191      
+00001172  43F9 0000757C            192      LEA CarHeaderState, A1
+00001178  0C51 0001                193      CMPI.W #1,(A1)                              
+0000117C  6600 0010                194      BNE SKIP_STORE_HEADER                           ;If we aren't reading the bitmap chunk for the full car width, don't save
+00001180                           195      
+00001180  32BC 0002                196      MOVE.W #2,(A1)
+00001184  43F9 000011A6            197      LEA FullCarWidthCalculations, A1
+0000118A  48D1 5FF3                198      MOVEM.L HEADER_REG, (A1)                           ;Save all the calculations for the full car width 
+0000118E                           199      
+0000118E                           200  SKIP_STORE_HEADER    
+0000118E  7820                     201      MOVE.L #THIRTHY_TWO_BITS, D4 
+00001190  B841                     202      CMP D1,D4
+00001192  6700 009E                203      BEQ THIRTY_TWO_BIT_BITMAP
+00001196                           204      
+00001196                           205      
+00001196  43F9 0028FAE3            206      LEA     ErrorMessage_WrongFileSize, A1
+0000119C  700D                     207      MOVE.L  #PRINT_STRING_CR_LF,D0
+0000119E  4E4F                     208      TRAP    #15
+000011A0  FFFF FFFF                209      SIMHALT
+000011A4                           210  
+000011A4                           211  
+000011A4                           212  
+000011A4                           213  
+000011A4                           214  
+000011A4                           215  paddingword10                        ds.w 1
+000011A6                           216  FullCarWidthCalculations            ds.l 13
+000011DA                           217  
+000011DA                           218  
+000011DA                           219  
+000011DA                           220  
+000011DA                           221  
+000011DA                           222  
+000011DA                           223  
+000011DA                           224  
+000011DA                           225  
+000011DA                           226  -------------------- end include --------------------
+000011DA                           227      INCLUDE BitmapSubroutine.X68
+000011DA                           228  
+000011DA                           229  
+000011DA  =0000FF3B                230  GREEN_SKIP_COLOR                EQU     $FF3B
+000011DA                           231  
+000011DA  =0000000A                232  TOP_LEFT_X_SCREEN_INDEX         EQU     10
+000011DA  =00000008                233  TOP_LEFT_Y_SCREEN_INDEX         EQU     8
+000011DA  =00000012                234  TOP_LEFT_X_BITMAP_CHUNK_INDEX   EQU     18
+000011DA  =0000000C                235  TOP_LEFT_Y_BITMAP_CHUNK_INDEX   EQU     12
+000011DA                           236  
+000011DA  =00000052                237  DRAW_PIXEL_COMMAND              EQU     82
+000011DA                           238  
+000011DA                           239  CONVERT_LONG_LE_TO_BE
+000011DA                           240      ;Converts a long in little endian to big endian
+000011DA  E05F                     241      ROR.W #8, D7                                    ;TRANSFORM for little endian 
+000011DC  4847                     242      SWAP D7
+000011DE  E05F                     243      ROR.W #8, D7
+000011E0  4E75                     244      RTS
+000011E2                           245      
+000011E2                           246  DRAW_CHUNK_THIRTY_TWO
+000011E2  4EB9 0000122A            247      JSR GET_COLOR
+000011E8  5248                     248      ADDA #1, A0                                     ;Trash alpha
+000011EA  4EB9 0000120C            249      JSR SET_COLOR_AND_DRAW
+000011F0                           250      
+000011F0  B5FC 00000000            251      CMP.L #0, A2                                    ;Comparing the width with 0
+000011F6  66EA                     252      BNE DRAW_CHUNK_THIRTY_TWO
+000011F8                           253         
+000011F8  2E06                     254      MOVE.L D6,D7                                    ;PIXELS * 4 FOR 4 BYTES PER PIXEL
+000011FA  E58F                     255      LSL.L #2, D7                        
+000011FC                           256      
+000011FC  D0C7                     257      ADDA D7, A0                                     ;End of row + beginning of next row
+000011FE  4283                     258      CLR.L D3
+00001200  360D                     259      MOVE.W A5,D3                                    ;Reset x screen
+00001202  344E                     260      MOVE.W A6,A2                                    ;Reset width counter
+00001204                           261      
+00001204  5382                     262      SUBI.L #1, D2                                   ;DECREMENT SCREEN Y COORDINATE
+00001206                           263      
+00001206  51CD FFDA                264      DBRA D5, DRAW_CHUNK_THIRTY_TWO
+0000120A  4E75                     265      RTS
+0000120C                           266          
+0000120C                           267  SET_COLOR_AND_DRAW
+0000120C  0C81 0000FF3B            268      CMPI.L #$FF3B, D1
+00001212  6700 0010                269      BEQ SKIP_COLOR
+00001216                           270      
+00001216  103C 0050                271      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+0000121A  4E4F                     272      TRAP    #15
+0000121C                           273      
+0000121C  2203                     274      MOVE.L D3,D1                ;Move X SCREEN value into D1 for draw pixel command
+0000121E                           275      
+0000121E  103C 0052                276      MOVE.B #DRAW_PIXEL_COMMAND, D0
+00001222  4E4F                     277      TRAP #15
+00001224                           278      
+00001224                           279  SKIP_COLOR    
+00001224  5243                     280      ADDI #1,D3                  ;Increment X coordinate screen
+00001226  534A                     281      SUBA #1, A2                 ;subtract 1 from the width
+00001228  4E75                     282      RTS 
+0000122A                           283      
+0000122A                           284  GET_COLOR
+0000122A  3218                     285      MOVE.W (A0)+, D1            ;BLUE
+0000122C  E189                     286      LSL.L #8, D1
+0000122E  1218                     287      MOVE.B (A0)+, D1            ;BLUE + GREEN + RED
+00001230                           288      
+00001230  4E75                     289      RTS
+00001232                           290                   
+00001232                           291  THIRTY_TWO_BIT_BITMAP
+00001232  E58D                     292      LSL.L #2, D5                ;number of bytes passed over (4 bytes per pixel)
+00001234  D1C5                     293      ADDA.L D5, A0               ;Gets the location of the top left pixel in memory
+00001236  2A0C                     294      MOVE.L A4, D5
+00001238  4EB8 11E2                295      JSR DRAW_CHUNK_THIRTY_TWO
+0000123C  4E75                     296      RTS
+0000123E                           297      
+0000123E                           298      
+0000123E                           299  
+0000123E                           300  
+0000123E                           301  
+0000123E                           302  
+0000123E                           303  
+0000123E                           304  
+0000123E                           305  
+0000123E                           306  
+0000123E                           307  
+0000123E                           308  
+0000123E                           309  
+0000123E                           310  
+0000123E                           311  
+0000123E                           312  
+0000123E                           313  
+0000123E                           314  
+0000123E                           315  
+0000123E                           316  
+0000123E                           317  
+0000123E                           318  
+0000123E                           319  
+0000123E                           320  
+0000123E                           321  
+0000123E                           322  
+0000123E                           323  
+0000123E                           324  
+0000123E                           325  
+0000123E                           326  
+0000123E                           327  
+0000123E                           328  
+0000123E                           329  
+0000123E                           330  
+0000123E                           331  
+0000123E                           332  
+0000123E                           333  
+0000123E                           334  
+0000123E                           335  -------------------- end include --------------------
+0000123E                           336      INCLUDE CatManager.X68    
+0000123E                           337  ;                It covers upward and downward movement checks, collision detection with cars,
+0000123E                           338  ;                and appropriate visual state transitions. The system prevents the cat from moving 
+0000123E                           339  ;                into occupied lanes and ensures proper redrawing of the background and cat sprite 
+0000123E                           340  ;                depending on whether a collision has occurred. Cat states are updated between idle, 
+0000123E                           341  ;                running, and hit states.
+0000123E                           342  
+0000123E  =0000000C                343  CAT_X_BITMAP_INDEX              EQU     12
+0000123E  =0000000A                344  CAT_Y_SCREEN_INDEX              EQU     10
+0000123E                           345  
+0000123E  =00000135                346  CAT_BOTTOM_LANE_MAX             EQU     309
+0000123E  =000000DD                347  CAT_TOP_LANE_MAX                EQU     221
+0000123E  =0000010A                348  HIT_TOP_Y                       EQU     266
+0000123E  =00000164                349  HIT_BOTTOM_Y                    EQU     356
+0000123E  =00000136                350  LOWER_LANE_Y                    EQU     310
+0000123E  =00000164                351  LOWER_LANE_Y_SHOCK              EQU     356
+0000123E  =0000005A                352  CHANGE_LANE_AMOUNT              EQU     90
+0000123E  =0000002E                353  COLLISION_Y_SHIFT_AMOUNT        EQU     46
+0000123E  =0000007D                354  JUMPING_CAT_FINAL_POSITION      EQU     125
+0000123E                           355  
+0000123E  =00000033                356  CAT_HEIGHT                      EQU     51
+0000123E  =00000000                357  JUMPING_CAT_X                   EQU     0
+0000123E  =00000000                358  JUMPING_CAT_Y                   EQU     0
+0000123E  =00000038                359  CAT_WIDTH                       EQU     56
+0000123E                           360  
+0000123E  =00000002                361  JUMPING_CAT_ACCELERATION        EQU     2       ;4 pixels per second squared
+0000123E                           362  
+0000123E                           363  
+0000123E                           364  REDRAW_BACKGROUND_CAT
+0000123E  41F9 00007DA4            365      LEA GameBackground, A0
+00001244                           366  
+00001244  2448                     367      MOVE.L A0,A2                             
+00001246  3018                     368      MOVE.W (A0)+, D0                ;Get header
+00001248                           369      
+00001248  49F9 0028FB12            370      LEA SpritePositioning, A4       ;Contains the data structure that holds the positioning of the cat on screen and on the bitmap
+0000124E                           371      
+0000124E  D9FC 0000000C            372      ADDA.L #CAT_X_BITMAP_INDEX, A4  ;Gets the X coordinate of the cat on the background bitmap, so we know which section of the background we are redrawing
+00001254                           373      
+00001254  3F14                     374      MOVE.W (A4),-(SP)               ;TOP LEFT X CHUNK
+00001256  518C                     375      SUBA.L #8, A4
+00001258  3F14                     376      MOVE.W (A4),-(SP)               ;CHUNK WIDTH
+0000125A  3F3C 0033                377      MOVE.W #CAT_HEIGHT,-(SP)        ;CHUNK HEIGHT
+0000125E  D9FC 0000000A            378      ADDA.L #10, A4
+00001264  3F14                     379      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+00001266  5D8C                     380      SUBA.L #6, A4
+00001268  3F1C                     381      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+0000126A  3F14                     382      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+0000126C  2F08                     383      MOVE.L A0,-(SP)
+0000126E                           384      
+0000126E  4EB8 10F0                385      JSR    READ_THROUGH_HEADER
+00001272  DFFC 00000010            386      ADDA.L #16, A7                  ;Reset Stack
+00001278  4E75                     387      RTS
+0000127A                           388      
+0000127A                           389  DRAW_CAT
+0000127A                           390  
+0000127A  2448                     391      MOVE.L A0,A2                             
+0000127C  3018                     392      MOVE.W (A0)+, D0                ;Get header
+0000127E                           393      
+0000127E  49F9 0028FB12            394      LEA SpritePositioning, A4
+00001284                           395      
+00001284  3F14                     396      MOVE.W (A4),-(SP)               ;TOP LEFT X CHUNK
+00001286  588C                     397      ADDA.L #4, A4
+00001288  3F14                     398      MOVE.W (A4),-(SP)               ;CHUNK WIDTH
+0000128A  3F3C 0033                399      MOVE.W #CAT_HEIGHT,-(SP)        ;CHUNK HEIGHT
+0000128E  3F24                     400      MOVE.W -(A4),-(SP)              ;TOP LEFT Y CHUNK
+00001290  5C8C                     401      ADDA.L #6, A4
+00001292  3F1C                     402      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+00001294  3F14                     403      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+00001296  2F08                     404      MOVE.L A0,-(SP)
+00001298                           405      
+00001298  4EB8 10F0                406      JSR READ_THROUGH_HEADER
+0000129C  DFFC 00000010            407      ADDA.L #16, A7
+000012A2  4E75                     408      RTS
+000012A4                           409  
+000012A4                           410  MOVE_CAT_DOWN_CHECK
+000012A4  49F9 0028FB12            411      LEA SpritePositioning, A4
+000012AA  2A4C                     412      MOVE.L A4,A5
+000012AC                           413      
+000012AC  D9FC 0000000A            414      ADDA.L #10, A4                  ;Y screen
+000012B2  0C54 0135                415      CMPI.W #CAT_BOTTOM_LANE_MAX,(A4)
+000012B6  6D00 0004                416      BLT NOT_IN_BOTTOM_LANE          ;Check failing means we shouldn't move the cat and should return to main game loop
+000012BA  4E75                     417      RTS
+000012BC                           418      
+000012BC                           419  NOT_IN_BOTTOM_LANE                  ;IF THERE IS A CAR BELOW THE CAT, DO NOT MOVE IT
+000012BC  45F9 0028FB0E            420      LEA CarXScreenIndex, A2
+000012C2  4287                     421      CLR.L D7
+000012C4  3E12                     422      MOVE.W (A2),D7                  ;Get the pointer to the x coordinate for the car in the lower lane
+000012C6  0647 0014                423      ADDI.W #DISTANCE_BTWN_CAR_POINTERS,D7 
+000012CA  DBC7                     424      ADDA.L D7, A5                   ;left x value of car below cat
+000012CC  558C                     425      SUBA.L #2, A4                   ;Left x coordinate of cat on screen
+000012CE  4281                     426      CLR.L D1
+000012D0  3214                     427      MOVE.W (A4),D1
+000012D2  0641 0038                428      ADDI.W #CAT_WIDTH, D1           ;Right x coordinate of cat
+000012D6  B255                     429      CMP.W (A5),D1                   ;compare left x of car with right point of cat
+000012D8  6D00 0018                430      BLT DOWN_CHECK_PASSED
+000012DC                           431      
+000012DC  0481 00000038            432      SUBI.L #CAT_WIDTH, D1           ;Left x coordinate of cat
+000012E2  4286                     433      CLR.L D6
+000012E4  3C15                     434      MOVE.W (A5),D6                  ;left x coordinate of car
+000012E6  598D                     435      SUBA.L #4, A5
+000012E8  DC55                     436      ADD.W (A5),D6                   ;Right x coordinate of car
+000012EA  B246                     437      CMP.W D6, D1                    ;Compare right coordinate of car with left coordinate of cat
+000012EC  6E00 0004                438      BGT DOWN_CHECK_PASSED           ;Check failing means we shouldn't move the cat and should return to main game loop
+000012F0  4E75                     439      RTS
+000012F2                           440      
+000012F2                           441  DOWN_CHECK_PASSED    
+000012F2  4EB8 123E                442      JSR REDRAW_BACKGROUND_CAT
+000012F6                           443      
+000012F6  49F9 0028FB12            444      LEA SpritePositioning, A4 
+000012FC  D9FC 0000000A            445      ADDA.L #CAT_Y_SCREEN_INDEX, A4
+00001302                           446      
+00001302  0654 005A                447      ADDI.W #CHANGE_LANE_AMOUNT, (A4)
+00001306  588C                     448      ADDA.L #4, A4                    ;Y coordinate on bitmap
+00001308  0654 005A                449      ADDI.W #CHANGE_LANE_AMOUNT, (A4)    
+0000130C                           450      
+0000130C  4E75                     451      RTS
+0000130E                           452      
+0000130E                           453      
+0000130E                           454  MOVE_CAT_UP_CHECK    
+0000130E  49F9 0028FB12            455      LEA SpritePositioning, A4
+00001314  2A4C                     456      MOVE.L A4,A5
+00001316                           457      
+00001316  D9FC 0000000A            458      ADDA.L #10, A4                  ;Y screen
+0000131C  0C54 00DD                459      CMPI.W #CAT_TOP_LANE_MAX,(A4)   ;can't go up if you are in top lane
+00001320  6E00 0004                460      BGT NOT_IN_TOP_LANE             ;Check failing means we shouldn't move the cat and should return to main game loop
+00001324  4E75                     461      RTS
+00001326                           462      
+00001326                           463  NOT_IN_TOP_LANE                     ;IF THERE IS A CAR ABOVE THE CAT, DO NOT MOVE IT
+00001326  45F9 0028FB0E            464      LEA CarXScreenIndex, A2
+0000132C  4287                     465      CLR.L D7
+0000132E  3E12                     466      MOVE.W (A2),D7                  ;Get the x coordinate for the car in the lower lane
+00001330  DBC7                     467      ADDA.L D7, A5                   ;left x value of car below cat
+00001332  558C                     468      SUBA.L #2, A4                   ;Left x coordinate of cat on screen
+00001334  4281                     469      CLR.L D1
+00001336  3214                     470      MOVE.W (A4),D1
+00001338  0641 0038                471      ADDI.W #CAT_WIDTH, D1           ;Right x coordinate of cat
+0000133C  B255                     472      CMP.W (A5),D1                   ;compare left x of car with right point of cat
+0000133E  6D00 0018                473      BLT UP_CHECK_PASSED
+00001342                           474      
+00001342  0481 00000038            475      SUBI.L #CAT_WIDTH, D1           ;Left x coordinate of cat
+00001348  4286                     476      CLR.L D6
+0000134A  3C15                     477      MOVE.W (A5),D6                  ;left x coordinate of car
+0000134C  598D                     478      SUBA.L #4, A5
+0000134E  DC55                     479      ADD.W (A5),D6                   ;Right x coordinate of car
+00001350  B246                     480      CMP.W D6, D1                    ;Compare right coordinate of car with left coordinate of cat
+00001352  6E00 0004                481      BGT UP_CHECK_PASSED             ;Check failing means we shouldn't move the cat and should return to main game loop
+00001356  4E75                     482      RTS
+00001358                           483      
+00001358                           484  UP_CHECK_PASSED    
+00001358  4EB8 123E                485      JSR REDRAW_BACKGROUND_CAT
+0000135C                           486      
+0000135C  49F9 0028FB12            487      LEA SpritePositioning, A4 
+00001362  D9FC 0000000A            488      ADDA.L #CAT_Y_SCREEN_INDEX, A4
+00001368                           489      
+00001368  0454 005A                490      SUBI.W #CHANGE_LANE_AMOUNT, (A4)
+0000136C  588C                     491      ADDA.L #4, A4                               ;Y coordinate on bitmap
+0000136E  0454 005A                492      SUBI.W #CHANGE_LANE_AMOUNT, (A4)    
+00001372                           493  
+00001372                           494      
+00001372  4E75                     495      RTS                                         ;We are done moving the cat position to a new lane and can return to main
+00001374                           496  
+00001374                           497  UPDATE_CAT
+00001374  49F9 0028FB12            498      LEA SpritePositioning, A4
+0000137A  2A4C                     499      MOVE.L A4, A5
+0000137C  244C                     500      MOVE.L A4, A2
+0000137E                           501      
+0000137E  45F9 00006FAC            502      LEA CatState, A2
+00001384  0C52 0002                503      CMP.W #2,(A2)
+00001388  6600 004A                504      BNE CAR_AND_CAT_DONT_OVERLAP
+0000138C  244C                     505      MOVE.L A4, A2
+0000138E                           506      
+0000138E                           507                                                  ;If cat has not been drawn into state 2, draw it
+0000138E  D5FC 0000000A            508      ADDA.L #10, A2                              ;get y position on screen
+00001394                           509      
+00001394  0C52 010A                510      CMP.W #HIT_TOP_Y,(A2)
+00001398  6D00 003A                511      BLT CAR_AND_CAT_DONT_OVERLAP
+0000139C                           512  
+0000139C  0C52 0136                513      CMP.W #LOWER_LANE_Y,(A2)
+000013A0  6700 0032                514      BEQ CAR_AND_CAT_DONT_OVERLAP  
+000013A4                           515      
+000013A4                           516                                                  ;if cat has already been drawn into state 2, but is still overlapping with car, don't redraw cat
+000013A4  508D                     517      ADDA.L #8, A5                               ;gets left x position of cat on screen
+000013A6  4284                     518      CLR.L D4
+000013A8  3815                     519      MOVE.W (A5),D4
+000013AA  598D                     520      SUBA.L #4, A5                               ;cat width
+000013AC  D855                     521      ADD.W (A5),D4                               ;rightmost x position of cat on screen
+000013AE  4287                     522      CLR.L D7
+000013B0  4286                     523      CLR.L D6
+000013B2  47F9 0028FB0E            524      LEA CarXScreenIndex, A3
+000013B8  3E13                     525      MOVE.W (A3),D7
+000013BA  5087                     526      ADDI.L #8, D7                               ;get overlap bool of first car
+000013BC  D9C7                     527      ADDA.L D7,A4
+000013BE  0C54 0001                528      CMP.W #1,(A4)
+000013C2  6700 00AE                529      BEQ CAR_AND_CAT_STILL_OVERLAP  
+000013C6                           530      
+000013C6                           531                                                  ;need to check if overlapping with both cars
+000013C6  D9FC 00000014            532      ADDA.L #DISTANCE_BTWN_CAR_POINTERS, A4      ;overlap boolean of second car
+000013CC  0C54 0001                533      CMP.W #1,(A4)
+000013D0  6700 00A0                534      BEQ CAR_AND_CAT_STILL_OVERLAP  
+000013D4                           535  
+000013D4                           536  CAR_AND_CAT_DONT_OVERLAP
+000013D4  4EB8 123E                537      JSR REDRAW_BACKGROUND_CAT
+000013D8                           538      
+000013D8  49F9 0028FB12            539      LEA SpritePositioning, A4
+000013DE  D9FC 0000000A            540      ADDA.L #CAT_Y_SCREEN_INDEX, A4
+000013E4                           541      
+000013E4  0C54 010A                542      CMPI.W #HIT_TOP_Y,(A4)
+000013E8  6700 000A                543      BEQ POST_COLLISION_SHIFT_UP   
+000013EC                           544      
+000013EC  0C54 0164                545      CMPI.W #HIT_BOTTOM_Y,(A4)
+000013F0  6600 0016                546      BNE NO_POST_COLLISION_SHIFT
+000013F4                           547      
+000013F4                           548  POST_COLLISION_SHIFT_UP    
+000013F4  0454 002E                549      SUBI.W #COLLISION_Y_SHIFT_AMOUNT,(A4)  
+000013F8  588C                     550      ADDA.L #4, A4
+000013FA  0454 002E                551      SUBI.W #COLLISION_Y_SHIFT_AMOUNT,(A4) 
+000013FE                           552      
+000013FE  43F9 00006FAC            553      LEA CatState, A1 
+00001404  32BC 0000                554      MOVE.W #0, (A1)                             ;cat is now in state 0
+00001408                           555      
+00001408                           556  NO_POST_COLLISION_SHIFT
+00001408  43F9 00006FAC            557      LEA CatState, A1
+0000140E  0C51 0002                558      CMP #2, (A1)
+00001412  6700 0036                559      BEQ MOVE_CAT_TO_2                           ;when cat is hit by car we shouldn't redraw background because car is (partially) background
+00001416                           560      
+00001416  0C51 0001                561      CMP #1, (A1)
+0000141A  6700 0018                562      BEQ MOVE_CAT_TO_0
+0000141E                           563      
+0000141E                           564  MOVE_CAT_TO_1
+0000141E                           565       *REDRAW CAT
+0000141E  41F9 000042D6            566      LEA CatRunningFrame2, A0
+00001424  4EB8 127A                567      JSR DRAW_CAT
+00001428                           568      
+00001428  43F9 00006FAC            569      LEA CatState, A1 
+0000142E  32BC 0001                570      MOVE.W #1, (A1)                             ;cat is now in state 1
+00001432                           571         
+00001432  4E75                     572      RTS
+00001434                           573  
+00001434                           574  MOVE_CAT_TO_0
+00001434                           575      *REDRAW CAT
+00001434  41F9 00001600            576      LEA CatRunningFrame1, A0
+0000143A  4EB8 127A                577      JSR Draw_Cat
+0000143E                           578      
+0000143E  43F9 00006FAC            579      LEA CatState, A1 
+00001444  32BC 0000                580      MOVE.W #0, (A1)                             ;cat is now in state 1
+00001448  4E75                     581      RTS
+0000144A                           582  
+0000144A                           583  MOVE_CAT_TO_2
+0000144A  49F9 0028FB12            584      LEA SpritePositioning, A4
+00001450  D9FC 0000000A            585      ADDA.L #CAT_Y_SCREEN_INDEX, A4              ;Shift below car
+00001456                           586      
+00001456  0654 002E                587      ADDI.W #COLLISION_Y_SHIFT_AMOUNT, (A4) 
+0000145A  588C                     588      ADDA.L #4, A4
+0000145C  0654 002E                589      ADDI.W #COLLISION_Y_SHIFT_AMOUNT, (A4)
+00001460                           590      
+00001460  41F9 0009974C            591      LEA CatCollision, A0 
+00001466  4EB8 127A                592      JSR DRAW_CAT
+0000146A  4EB9 000072A8            593      JSR DRAW_CAR
+00001470  4E75                     594      RTS
+00001472                           595      
+00001472                           596  CAR_AND_CAT_STILL_OVERLAP  
+00001472  4E75                     597      RTS    
+00001474                           598  
+00001474                           599  JUMPING_CAT_START_SCREEN
+00001474  41F9 00241BBC            600      LEA JumpingFrame1, A0
+0000147A                           601      
+0000147A  2448                     602      MOVE.L A0,A2                             
+0000147C  3018                     603      MOVE.W (A0)+, D0                ;Get header
+0000147E                           604      
+0000147E                           605      ;draw stage 1 of jump (cat sitting)
+0000147E  49F9 00006FB0            606      LEA JumpingCat, A4
+00001484  4282                     607      CLR.L D2
+00001486  3F3C 0000                608      MOVE.W #JUMPING_CAT_X,-(SP)     ;TOP LEFT X CHUNK
+0000148A  3F3C 0038                609      MOVE.W #CAT_WIDTH,-(SP)         ;CHUNK WIDTH
+0000148E  3F3C 0033                610      MOVE.W #CAT_HEIGHT,-(SP)        ;CHUNK HEIGHT
+00001492  3F3C 0000                611      MOVE.W #JUMPING_CAT_Y,-(SP)     ;TOP LEFT Y CHUNK
+00001496  3F1C                     612      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+00001498  3F14                     613      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+0000149A  2F08                     614      MOVE.L A0,-(SP)
+0000149C  4EB8 10F0                615      JSR    READ_THROUGH_HEADER
+000014A0  DFFC 00000010            616      ADDA.L #16, A7
+000014A6                           617      
+000014A6  103C 005E                618      MOVE.B  #94,D0
+000014AA  4E4F                     619      TRAP    #15
+000014AC                           620      
+000014AC  4EB9 000015B6            621      JSR REDRAW_CAT_JUMPING          ;Redraw Cat
+000014B2                           622      
+000014B2                           623  JUMPING_CAT_2    
+000014B2                           624      
+000014B2  4EB9 0000156A            625      JSR INCREASE_JUMP_CAT_X_NO_CHANGE_Y
+000014B8                           626      
+000014B8                           627      ;draw stage 2 of cat jumping (cat with feet together)
+000014B8  41F9 000042D6            628      LEA CatRunningFrame2, A0
+000014BE  4EB9 00001588            629      JSR DRAW_JUMPING_CAT 
+000014C4                           630  
+000014C4                           631  JUMPING_CAT_3    
+000014C4                           632      
+000014C4  4EB9 00001576            633      JSR INCREASE_JUMP_CAT_X_DECREASE_Y  
+000014CA                           634     
+000014CA                           635      ;draw stage 3 of jumping (vertical jump)
+000014CA  41F9 00244892            636      LEA JumpingFrame3, A0
+000014D0  4EB9 00001588            637      JSR DRAW_JUMPING_CAT 
+000014D6                           638      
+000014D6                           639  JUMPING_CAT_4    
+000014D6  4EB9 00001576            640      JSR INCREASE_JUMP_CAT_X_DECREASE_Y  
+000014DC                           641    
+000014DC                           642      ;draw stage 4 of jumping (horizontal jump)
+000014DC  41F9 00247568            643      LEA JumpingFrame4, A0
+000014E2  4EB9 00001588            644      JSR DRAW_JUMPING_CAT 
+000014E8                           645      
+000014E8                           646  HORIZONTAL_SHIFT    
+000014E8                           647      ;Shift horizontal jump with acceleration
+000014E8  49F9 00006FB0            648      LEA JumpingCat, A4
+000014EE  43F9 0028FB10            649      LEA JumpingCatVelocity, A1
+000014F4  5451                     650      ADD.W #JUMPING_CAT_ACCELERATION,(A1)
+000014F6  4287                     651      CLR.L D7
+000014F8  3E11                     652      MOVE.W (A1),D7
+000014FA  DF54                     653      ADD.W D7,(A4)           ;shift jumping cat to the right based off velocity and acceleration
+000014FC  588C                     654      ADDA.L #4,A4
+000014FE  2A4C                     655      MOVE.L A4, A5
+00001500  DF5C                     656      ADD.W D7,(A4)+           ;shift bitmap in addition to screen
+00001502                           657      
+00001502  41F9 00247568            658      LEA JumpingFrame4, A0
+00001508                           659      
+00001508  0C55 007D                660      CMP.W #JUMPING_CAT_FINAL_POSITION,(A5)
+0000150C  6D00 007A                661      BLT DRAW_JUMPING_CAT
+00001510                           662      
+00001510  45F9 00006FAE            663      LEA JumpingCatState, A2
+00001516  5252                     664      ADD.W #1,(A2)
+00001518                           665  
+00001518  4EB9 00001588            666      JSR DRAW_JUMPING_CAT
+0000151E                           667      
+0000151E                           668  JUMPING_CAT_5
+0000151E                           669      
+0000151E  4EB9 00001558            670      JSR INCREASE_JUMPING_CAT_X_Y
+00001524                           671        
+00001524                           672      ;draw stage 5 of jumping (vertical slide)
+00001524  41F9 0024A23E            673      LEA JumpingFrame5, A0
+0000152A  4EB9 00001588            674      JSR DRAW_JUMPING_CAT  
+00001530                           675    
+00001530                           676  JUMPING_CAT_6      
+00001530                           677  
+00001530  4EB9 00001558            678      JSR INCREASE_JUMPING_CAT_X_Y   
+00001536                           679      
+00001536                           680      ;draw stage 6 of jumping (walking image with feet apart)
+00001536  41F9 00001600            681      LEA CatRunningFrame1, A0
+0000153C  4EB9 00001588            682      JSR DRAW_JUMPING_CAT
+00001542                           683      
+00001542                           684  JUMPING_CAT_7    
+00001542                           685      
+00001542  4EB9 0000156A            686      JSR INCREASE_JUMP_CAT_X_NO_CHANGE_Y 
+00001548                           687      
+00001548                           688      ;draw stage 7 of jumping (cat sitting)
+00001548  41F9 0024CF14            689      LEA JumpingFrame7, A0
+0000154E  4EB9 00001588            690      JSR DRAW_JUMPING_CAT
+00001554  584F                     691      ADDA #4, A7
+00001556  4E75                     692      RTS
+00001558                           693      
+00001558                           694  INCREASE_JUMPING_CAT_X_Y
+00001558  065C 0014                695      ADD.W #20,(A4)+
+0000155C  065C 000A                696      ADD.W #10,(A4)+
+00001560  065C 0014                697      ADD.W #20,(A4)+
+00001564  0654 000A                698      ADD.W #10,(A4)    
+00001568  4E75                     699      RTS
+0000156A                           700      
+0000156A                           701  INCREASE_JUMP_CAT_X_NO_CHANGE_Y
+0000156A  0654 0014                702      ADD.W #20,(A4)
+0000156E  588C                     703      ADDA.L #4, A4
+00001570  065C 0014                704      ADD.W #20,(A4)+
+00001574  4E75                     705      RTS
+00001576                           706      
+00001576                           707  INCREASE_JUMP_CAT_X_DECREASE_Y  
+00001576  065C 0014                708      ADD.W #20,(A4)+
+0000157A  045C 0014                709      SUB.W #20,(A4)+
+0000157E  065C 0014                710      ADD.W #20,(A4)+
+00001582  0454 0014                711      SUB.W #20,(A4)  
+00001586  4E75                     712      RTS
+00001588                           713      
+00001588                           714  DRAW_JUMPING_CAT
+00001588  2448                     715      MOVE.L A0,A2                             
+0000158A  3018                     716      MOVE.W (A0)+, D0                ;Get header
+0000158C  5D8C                     717      SUBA.L #6, A4                   ;Reset stack pointer to beginning
+0000158E  4282                     718      CLR.L D2
+00001590  3F3C 0000                719      MOVE.W #JUMPING_CAT_X,-(SP)     ;TOP LEFT X CHUNK
+00001594  3F3C 0038                720      MOVE.W #CAT_WIDTH,-(SP)         ;CHUNK WIDTH
+00001598  3F3C 0033                721      MOVE.W #CAT_HEIGHT,-(SP)        ;CHUNK HEIGHT
+0000159C  3F3C 0000                722      MOVE.W #JUMPING_CAT_Y,-(SP)     ;TOP LEFT Y CHUNK
+000015A0  3F1C                     723      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+000015A2  3F1C                     724      MOVE.W (A4)+,-(SP)              ;TOP LEFT Y SCREEN
+000015A4  2F08                     725      MOVE.L A0,-(SP)
+000015A6  4EB8 10F0                726      JSR    READ_THROUGH_HEADER
+000015AA  DFFC 00000010            727      ADDA.L #16, A7
+000015B0                           728        
+000015B0  103C 005E                729      MOVE.B  #94,D0
+000015B4  4E4F                     730      TRAP    #15
+000015B6                           731  
+000015B6                           732  REDRAW_CAT_JUMPING
+000015B6  41F9 0009C422            733      LEA StartScreen, A0
+000015BC  2448                     734      MOVE.L A0,A2               
+000015BE  3018                     735      MOVE.W (A0)+, D0                ;Get header
+000015C0                           736      
+000015C0  49F9 00006FB0            737      LEA JumpingCat, A4
+000015C6  4282                     738      CLR.L D2
+000015C8  588C                     739      ADDA.L #4, A4
+000015CA                           740      
+000015CA  3F1C                     741      MOVE.W (A4)+,-(SP)              ;TOP LEFT X CHUNK
+000015CC  3F3C 0038                742      MOVE.W #CAT_WIDTH,-(SP)         ;CHUNK WIDTH
+000015D0  3F3C 0033                743      MOVE.W #CAT_HEIGHT,-(SP)        ;CHUNK HEIGHT
+000015D4  3F14                     744      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+000015D6  5D8C                     745      SUBA.L #6, A4
+000015D8  3F1C                     746      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+000015DA  3F14                     747      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+000015DC  2F08                     748      MOVE.L A0,-(SP)
+000015DE                           749      
+000015DE  4EB8 10F0                750      JSR    READ_THROUGH_HEADER
+000015E2  DFFC 00000010            751      ADDA.L #16, A7                  ;Reset Stack
+000015E8                           752      
+000015E8  45F9 00006FAE            753      LEA JumpingCatState, A2
+000015EE  49F9 00006FB0            754      LEA JumpingCat, A4
+000015F4                           755      
+000015F4                           756      ;we loop at 4 until horizontal cat has been shifted fully
+000015F4  0C52 0004                757      CMP.W #4,(A2)
+000015F8  6700 FEEE                758      BEQ HORIZONTAL_SHIFT
+000015FC                           759      
+000015FC  5252                     760      ADD.W #1,(A2)    
+000015FE                           761     
+000015FE  4E75                     762      RTS
+00001600                           763  
+00001600                           764  
+00001600                           765  
+00001600                           766  
+00001600                           767  
+00001600                           768  
+00001600                           769  
+00001600                           770  CatRunningFrame1            INCBIN "Running_1.bmp"  
+000042D6                           771  CatRunningFrame2            INCBIN "Running_2.bmp"
+00006FAC= 0000                     772  CatState                    dc.w 0
+00006FAE= 0001                     773  JumpingCatState             dc.w 1
+00006FB0                           774  JumpingCat
+00006FB0= 009B 015E 0028 011D      775      dc.w 155,350,40,285
+00006FB8                           776  
+00006FB8                           777  
+00006FB8                           778  
+00006FB8                           779  
+00006FB8                           780  
+00006FB8                           781  
+00006FB8                           782  
+00006FB8                           783  
+00006FB8                           784  
+00006FB8                           785  
+00006FB8                           786  
+00006FB8                           787  
+00006FB8                           788  
+00006FB8                           789  
+00006FB8                           790  -------------------- end include --------------------
+00006FB8                           791      INCLUDE BackgroundManager.X68
+00006FB8                           792  ;                 state changes like winning, losing, or starting the game. Draws specific bitmap sections based
+00006FB8                           793  ;                 on sprite positions, and controls sequences like the animated "jumping cat" intro through multiple
+00006FB8                           794  ;                 stages of movement and poses. Handles screen-clearing visuals (like the screen),
+00006FB8                           795  ;                 triggers associated sounds, and responds to mouse inputs for restarting the game. Additionally, it
+00006FB8                           796  ;                 resets key gameplay variables (e.g., cat state, car spawn timers, sprite positioning) to ensure a
+00006FB8                           797  ;                 consistent initial state upon restart. 
+00006FB8                           798  
+00006FB8  =00000012                799  BACKGROUND_X_INDEX              EQU     18
+00006FB8                           800  
+00006FB8  =00000041                801  BITMAP_START_Y                  EQU     65
+00006FB8  =0000019F                802  BITMAP_END_Y                    EQU     415
+00006FB8                           803  
+00006FB8                           804  BACKGROUND_START   
+00006FB8  2448                     805      MOVE.L A0,A2                ;get another base location for the offset                                         
+00006FBA  3018                     806      MOVE.W (A0)+, D0            ;Get header
+00006FBC                           807  
+00006FBC                           808      
+00006FBC  4281                     809      CLR.L D1
+00006FBE  4282                     810      CLR.L D2
+00006FC0                           811      
+00006FC0  49F9 0028FB12            812      LEA SpritePositioning, A4   
+00006FC6                           813      
+00006FC6  D9FC 00000012            814      ADDA.L #BACKGROUND_X_INDEX, A4
+00006FCC  3F14                     815      MOVE.W (A4),-(SP)       ;TOP LEFT X CHUNK
+00006FCE  588C                     816      ADDA.L #4, A4
+00006FD0  3F1C                     817      MOVE.W (A4)+,-(SP)      ;CHUNK WIDTH
+00006FD2  3F14                     818      MOVE.W (A4),-(SP)       ;CHUNK HEIGHT
+00006FD4  598C                     819      SUBA.L #4, A4
+00006FD6  3F14                     820      MOVE.W (A4),-(SP)       ;TOP LEFT Y CHUNK
+00006FD8  5C8C                     821      ADDA.L #6, A4
+00006FDA  3F1C                     822      MOVE.W (A4)+,-(SP)      ;TOP LEFT X SCREEN
+00006FDC  3F14                     823      MOVE.W (A4),-(SP)       ;TOP LEFT Y SCREEN
+00006FDE  2F08                     824      MOVE.L A0,-(SP)
+00006FE0                           825      
+00006FE0  4EB8 10F0                826      JSR    READ_THROUGH_HEADER
+00006FE4  DFFC 00000010            827      ADDA.L #16, A7
+00006FEA  4E75                     828      RTS
+00006FEC                           829  
+00006FEC                           830  WIN_SCREEN
+00006FEC                           831      
+00006FEC  4EB9 00007918            832      JSR STOP_BACKGROUND_MUSIC
+00006FF2  4EB9 00007938            833      JSR WIN_SOUND
+00006FF8  41F9 00128C00            834      LEA WinScreen, A0
+00006FFE                           835      
+00006FFE  6000 0014                836      BRA END_GAME
+00007002                           837      
+00007002                           838  LOSE_SCREEN
+00007002                           839          
+00007002  4EB9 00007918            840      JSR STOP_BACKGROUND_MUSIC
+00007008  4EB9 0000794E            841      JSR LOSE_SOUND
+0000700E  41F9 001B53DE            842      LEA LoseScreen, A0
+00007014                           843      
+00007014                           844  END_GAME
+00007014  4EB9 00007066            845      JSR LOADING_SCREEN_POST_START
+0000701A  4280                     846      CLR.L D0
+0000701C  4281                     847      CLR.L D1
+0000701E  4282                     848      CLR.L D2
+00007020                           849      
+00007020                           850       *copies buffer
+00007020  103C 005E                851       MOVE.B  #94,D0
+00007024  4E4F                     852       TRAP    #15
+00007026                           853      
+00007026                           854      ;BITMAP IS PASSED INTO A0
+00007026  2448                     855      MOVE.L A0,A2                   
+00007028  3018                     856      MOVE.W (A0)+, D0            ;Get header
+0000702A                           857      
+0000702A  49F9 0028FB12            858      LEA SpritePositioning, A4   
+00007030                           859      
+00007030  D9FC 00000012            860      ADDA.L #BACKGROUND_X_INDEX, A4
+00007036  3F14                     861      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00007038  588C                     862      ADDA.L #4, A4
+0000703A  3F1C                     863      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+0000703C  3F14                     864      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+0000703E  598C                     865      SUBA.L #4, A4
+00007040  3F14                     866      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+00007042  5C8C                     867      ADDA.L #6, A4
+00007044  3F1C                     868      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+00007046  3F14                     869      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00007048  2F08                     870      MOVE.L A0,-(SP)
+0000704A                           871      
+0000704A  4EB8 10F0                872      JSR    READ_THROUGH_HEADER
+0000704E  DFFC 00000010            873      ADDA.L #16, A7
+00007054                           874      
+00007054                           875      *copies buffer
+00007054  103C 005E                876      MOVE.B  #94,D0
+00007058  4E4F                     877      TRAP    #15
+0000705A                           878      
+0000705A  584F                     879      ADDA #4, A7
+0000705C                           880      
+0000705C  4EB9 00007C2E            881      JSR CHECK_RESTART_AFTER_WIN_LOSE
+00007062                           882      
+00007062  6000 9F9C                883      BRA START
+00007066                           884  
+00007066                           885  LOADING_SCREEN_POST_START
+00007066                           886      ;Set pen color   
+00007066  223C 00FFFFFF            887      MOVE.L  #WHITE,D1
+0000706C  103C 0050                888      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+00007070  4E4F                     889      TRAP    #15
+00007072                           890      
+00007072                           891      ;Set fill color 
+00007072  103C 0051                892      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+00007076  223C 00FFFFFF            893      MOVE.L #WHITE, D1
+0000707C  4E4F                     894      TRAP #15
+0000707E                           895      
+0000707E  223C 00000074            896      MOVE.L #(SCREEN_START_X+1),D1
+00007084  7443                     897      MOVE.L #(BITMAP_START_Y+2),D2
+00007086  263C 0000020D            898      MOVE.L #(SCREEN_END_X-1),D3
+0000708C  283C 0000019F            899      MOVE.L #BITMAP_END_Y,D4
+00007092                           900      
+00007092  103C 0057                901      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00007096  4E4F                     902      TRAP    #15
+00007098                           903      
+00007098  223C 00000000            904      MOVE.L #BLACK, D1   ;set text color to black
+0000709E  4282                     905      CLR.L D2
+000070A0  143C 0006                906      MOVE.B #6, D2
+000070A4  E14A                     907      LSL #8, D2
+000070A6  143C 000E                908      MOVE.B #14, D2      ;size 14 font
+000070AA  E18A                     909      LSL.L #8, D2
+000070AC  E18A                     910      LSL.L #8, D2
+000070AE                           911      
+000070AE  203C 00000015            912      MOVE.L #SET_FONT_COMMAND, D0
+000070B4  4E4F                     913      TRAP    #15
+000070B6                           914  
+000070B6  43F9 000077F4            915      LEA LoadingText,A1
+000070BC  323C 0118                916      MOVE.W #LOADING_TEXT_X, D1
+000070C0  343C 0112                917      MOVE.W #START_BUTTON_TEXT_Y, D2
+000070C4  705F                     918      MOVE.L #DRAW_TEXT_COMMAND, D0
+000070C6  4E4F                     919      TRAP #15
+000070C8                           920      
+000070C8  4E75                     921      RTS
+000070CA                           922  
+000070CA                           923  OKAY_SCREEN
+000070CA                           924          ;Set pen color   
+000070CA  223C 00FFFFFF            925      MOVE.L  #WHITE,D1
+000070D0  103C 0050                926      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+000070D4  4E4F                     927      TRAP    #15
+000070D6                           928      
+000070D6                           929      ;Set fill color 
+000070D6  103C 0051                930      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+000070DA  223C 00FFFFFF            931      MOVE.L #WHITE, D1
+000070E0  4E4F                     932      TRAP #15
+000070E2                           933      
+000070E2  223C 00000073            934      MOVE.L #SCREEN_START_X,D1
+000070E8  7441                     935      MOVE.L #BITMAP_START_Y,D2
+000070EA  263C 0000020E            936      MOVE.L #SCREEN_END_X,D3
+000070F0  283C 0000019F            937      MOVE.L #BITMAP_END_Y,D4
+000070F6                           938      
+000070F6  103C 0057                939      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000070FA  4E4F                     940      TRAP    #15
+000070FC                           941      
+000070FC  223C 00000000            942      MOVE.L #BLACK, D1   ;set text color to black
+00007102  4282                     943      CLR.L D2
+00007104  143C 0006                944      MOVE.B #6, D2
+00007108  E14A                     945      LSL #8, D2
+0000710A  143C 000E                946      MOVE.B #14, D2      ;size 14 font
+0000710E  E18A                     947      LSL.L #8, D2
+00007110  E18A                     948      LSL.L #8, D2
+00007112                           949      
+00007112  203C 00000015            950      MOVE.L #SET_FONT_COMMAND, D0
+00007118  4E4F                     951      TRAP    #15
+0000711A                           952  
+0000711A  43F9 0000718C            953      LEA OkayText,A1
+00007120  323C 0118                954      MOVE.W #LOADING_TEXT_X, D1
+00007124  343C 0112                955      MOVE.W #START_BUTTON_TEXT_Y, D2
+00007128  705F                     956      MOVE.L #DRAW_TEXT_COMMAND, D0
+0000712A  4E4F                     957      TRAP #15
+0000712C                           958      
+0000712C  4E75                     959      RTS
+0000712E                           960  PRINT_TOM
+0000712E  41F9 0024FBEA            961      LEA NotATomPhoto, A0
+00007134  4280                     962      CLR.L D0
+00007136  2448                     963      MOVE.L A0,A2                ;get another base location for the offset                                         
+00007138  3018                     964      MOVE.W (A0)+, D0            ;Get header
+0000713A                           965  
+0000713A  4281                     966      CLR.L D1
+0000713C  4282                     967      CLR.L D2
+0000713E                           968  
+0000713E  49F9 00007180            969      LEA RestartImageDimensions, A4
+00007144  3F1C                     970      MOVE.W (A4)+,-(SP)  ;Bitmap x
+00007146  3F1C                     971      MOVE.W (A4)+,-(SP)  ;width
+00007148  3F1C                     972      MOVE.W (A4)+,-(SP)  ;height
+0000714A  3F1C                     973      MOVE.W (A4)+,-(SP)  ;Bitmap y
+0000714C  3F1C                     974      MOVE.W (A4)+,-(SP)  ;screen x
+0000714E  3F1C                     975      MOVE.W (A4)+,-(SP)  ;screen y
+00007150  2F08                     976      MOVE.L A0,-(SP)
+00007152                           977      
+00007152  4EB8 10F0                978      JSR    READ_THROUGH_HEADER
+00007156  DFFC 00000010            979      ADDA.L #16, A7
+0000715C                           980      
+0000715C  4EB9 0000777C            981      JSR PRINT_ARE_YOU_SURE
+00007162                           982      
+00007162  4EB9 00007768            983      JSR COPY_BUFFER
+00007168                           984      
+00007168  4EB9 00007D1A            985      JSR CHECK_ARE_YOU_SURE 
+0000716E                           986      
+0000716E  4EB8 70CA                987      JSR OKAY_SCREEN
+00007172                           988      
+00007172  4EB9 00007768            989      JSR COPY_BUFFER
+00007178                           990      
+00007178  4EB9 00007964            991      JSR LETS_GO_SOUND
+0000717E                           992      
+0000717E  4E75                     993      RTS
+00007180                           994  
+00007180                           995  
+00007180                           996  RestartImageDimensions
+00007180                           997      *x, y, width, height, screen x, screen y
+00007180= 0000 00BB 015D 0...      998      dc.w 0,187,349,0,220,65
+0000718C                           999  
+0000718C= 4F6B6179 202E2E2E ...   1000  OkayText                 dc.l 'Okay ...', 0  
+00007198                          1001  
+00007198                          1002  
+00007198                          1003  
+00007198                          1004  
+00007198                          1005  -------------------- end include --------------------
+00007198                          1006      INCLUDE CarManager.X68
+00007198                          1007  ;                Cars move from right to left across the screen, and their position is updated 
+00007198                          1008  ;                based on a time-based velocity system. If a car and the cat overlap on both the
+00007198                          1009  ;                x- and y-axes, a collision occurs—reducing the cat’s lives and triggering a 
+00007198                          1010  ;                reaction animation. The program ensures that only visible portions of cars are drawn,
+00007198                          1011  ;                and cars are reset or stopped once fully offscreen. It also prevents repeated life
+00007198                          1012  ;                loss from a single collision by tracking overlapping states. 
+00007198                          1013  
+00007198  =00000029               1014  CAR_OFF_SCREEN_FULLY            EQU     41
+00007198  =0000019B               1015  BITMAP_END_X                    EQU     411
+00007198  =0000004B               1016  CAR_WIDTH                       EQU     75 
+00007198  =0000002E               1017  CAR_HEIGHT                      EQU     46
+00007198  =00000000               1018  CAR_START_X                     EQU     0
+00007198                          1019  
+00007198  =00000073               1020  SCREEN_START_X                  EQU     115
+00007198  =0000020E               1021  SCREEN_END_X                    EQU     526
+00007198                          1022  
+00007198  =00000003               1023  VELOCITY                        EQU     $0003   ;75 pixels per second
+00007198                          1024  
+00007198  =00000002               1025  SHIFT_OUT_DECIMALS              EQU     2
+00007198                          1026  
+00007198  =00000014               1027  DISTANCE_BTWN_CAR_POINTERS      EQU     20
+00007198                          1028  
+00007198                          1029  
+00007198                          1030  REDRAW_CAR_BACKGROUND
+00007198  41F9 00007DA4           1031      LEA GameBackground, A0
+0000719E                          1032  
+0000719E  2448                    1033      MOVE.L A0,A2                             
+000071A0  3018                    1034      MOVE.W (A0)+, D0            ;Get header
+000071A2                          1035      
+000071A2  49F9 0028FB12           1036      LEA SpritePositioning, A4
+000071A8  47F9 0028FB0E           1037      LEA CarXScreenIndex, A3
+000071AE  4287                    1038      CLR.L D7
+000071B0  3E13                    1039      MOVE.W (A3),D7
+000071B2  5887                    1040      ADDI.L #4, D7
+000071B4  D9C7                    1041      ADDA.L D7, A4
+000071B6  3F14                    1042      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+000071B8  518C                    1043      SUBA.L #8, A4
+000071BA  3F1C                    1044      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+000071BC  3F14                    1045      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+000071BE  508C                    1046      ADDA.L #8, A4
+000071C0  3F14                    1047      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+000071C2  5D8C                    1048      SUBA.L #6, A4
+000071C4  3F1C                    1049      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+000071C6  3F14                    1050      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+000071C8  2F08                    1051      MOVE.L A0,-(SP)
+000071CA                          1052          
+000071CA  4EB8 10F0               1053      JSR    READ_THROUGH_HEADER
+000071CE  DFFC 00000010           1054      ADDA.L #16, A7
+000071D4                          1055     
+000071D4  4E75                    1056      RTS   
+000071D6                          1057  UPDATE_CAR
+000071D6  49F9 0028FB12           1058      LEA SpritePositioning,A4
+000071DC                          1059      
+000071DC  47F9 0028FB0E           1060      LEA CarXScreenIndex, A3
+000071E2  4287                    1061      CLR.L D7
+000071E4  3E13                    1062      MOVE.W (A3),D7
+000071E6  D9C7                    1063      ADDA.L D7, A4
+000071E8                          1064      
+000071E8  D9FC 0000000A           1065      ADDA.L #10,A4                 ;get car moving boolean
+000071EE  0C54 0000               1066      CMP.W #0,(A4)
+000071F2  6600 0004               1067      BNE CAR_NOT_MOVING                    ;return if car is not moving
+000071F6  4E75                    1068      RTS
+000071F8                          1069  CAR_NOT_MOVING
+000071F8  99FC 0000000A           1070      SUBA.L #10,A4
+000071FE                          1071      
+000071FE  0C54 0073               1072      CMPI.W #SCREEN_START_X, (A4)  ;redraw background if car is partially on screen
+00007202  6700 01A4               1073      BEQ REDRAW_CAR_BACKGROUND_LAST
+00007206                          1074      
+00007206  588C                    1075      ADDA.L #4,A4
+00007208                          1076      
+00007208  0C54 019B               1077      CMPI.W #BITMAP_END_X,(A4)
+0000720C  6700 0022               1078      BEQ UPDATE_CAR_POSITION       ;Don't redraw background if object is not on screen
+00007210                          1079  
+00007210  4EB8 7198               1080      JSR REDRAW_CAR_BACKGROUND
+00007214                          1081      
+00007214  49F9 0028FB12           1082      LEA SpritePositioning,A4
+0000721A                          1083      
+0000721A  47F9 0028FB0C           1084      LEA CarXIndex, A3
+00007220  3E13                    1085      MOVE.W (A3),D7
+00007222                          1086      
+00007222  D9C7                    1087      ADDA.L D7, A4               ;Gets Car X position
+00007224  588C                    1088      ADDA.L #4, A4               ;CAR WIDTH                       
+00007226  0C54 004B               1089      CMPI.W #CAR_WIDTH,(A4)      ;COMPARE CHUNK WIDTH WITH ORIGINAL WIDTH OF CAR TO SEE IF CAR WIDTH WAS CHANGED TO PARTIAL          
+0000722A  4EB9 0000751A           1090      JSR CHANGE_WIDTH_BACK
+00007230                          1091      
+00007230                          1092  UPDATE_CAR_POSITION
+00007230  41F9 00007BAE           1093      LEA DeltaTime,A0
+00007236  2210                    1094      MOVE.L (A0),D1
+00007238                          1095      
+00007238                          1096      *Calculate pixels
+00007238  C2FC 0003               1097      MULU #VELOCITY, D1
+0000723C                          1098      
+0000723C                          1099      *update position based on velocity      
+0000723C  49F9 0028FB12           1100      LEA SpritePositioning,A4
+00007242  4287                    1101      CLR.L D7
+00007244  47F9 0028FB0E           1102      LEA CarXScreenIndex, A3
+0000724A  3E13                    1103      MOVE.W (A3),D7
+0000724C  D9C7                    1104      ADDA.L D7, A4                       ;Gets Car X position ON SCREEN
+0000724E  E449                    1105      LSR #SHIFT_OUT_DECIMALS, D1         ;Shift out decimals
+00007250  588C                    1106      ADDA.L #4, A4                       ;Background chunk screen x
+00007252  9354                    1107      SUB.W D1,(A4)                       ;moves background redraw position
+00007254  598C                    1108      SUBA.L #4, A4                       ;Gets Car X position on screen
+00007256  9354                    1109      SUB.W D1,(A4)                       ;Pixels MINUS current position (MOVING LEFT), y doesn't change
+00007258                          1110  
+00007258                          1111      *Check if car is fully off screen
+00007258  0C54 0029               1112      CMPI.W #CAR_OFF_SCREEN_FULLY,(A4)
+0000725C  6D00 014A               1113      BLT REDRAW_CAR_BACKGROUND_LAST
+00007260                          1114      
+00007260                          1115      *Check if car is partially on screen (TO THE LEFT)
+00007260  3E14                    1116      MOVE.W (A4),D7                      ;New left X position
+00007262  3407                    1117      MOVE.W D7, D2
+00007264  0C54 0073               1118      CMPI.W #SCREEN_START_X,(A4)
+00007268  6D00 00D6               1119      BLT CAR_PARTIALLY_ON_SCREEN_LEFT
+0000726C                          1120  
+0000726C                          1121      *Check if car is partially on screen (TO THE RIGHT)
+0000726C  598C                    1122      SUBA.L #4, A4                       ;Width of car
+0000726E  DE54                    1123      ADD.W (A4),D7                       ;New right x position
+00007270  0C47 020E               1124      CMPI.W #SCREEN_END_X,D7
+00007274  6E00 00B0               1125      BGT CAR_PARTIALLY_ON_SCREEN_RIGHT
+00007278                          1126      
+00007278  47F9 0028FB12           1127      LEA SpritePositioning, A3
+0000727E  588B                    1128      ADDA.L #4, A3                       ;Gets width of cat
+00007280  3013                    1129      MOVE.W (A3),D0 
+00007282  588B                    1130      ADDA.L #4, A3                       ;Gets left X coordinate of cat
+00007284  321B                    1131      MOVE.W (A3)+,D1
+00007286  D041                    1132      ADD.W D1, D0                        ;Gets right x coordinate of cat
+00007288                          1133      
+00007288                          1134      *see if cat and car collide
+00007288  B440                    1135      CMP.W D0, D2                        ;comparing right x coordinate of cat with left x coordinate of car
+0000728A  6D00 015C               1136      BLT COLLISION_X_AXIS
+0000728E                          1137      
+0000728E  9041                    1138      SUB.W D1,D0
+00007290  BE40                    1139      CMP.W D0,D7                         ;comparing left coordinate of cat with right coordinate of car
+00007292                          1140      
+00007292  45F9 0028FB0E           1141      LEA CarXScreenIndex, A2
+00007298  3E12                    1142      MOVE.W (A2),D7
+0000729A  5087                    1143      ADDI.L #8, D7                       ;get car overlapping bit
+0000729C  47F9 0028FB12           1144      LEA SpritePositioning,A3  
+000072A2                          1145                                     
+000072A2                          1146      ;If it had been overlapping, move state to no longer overlapping
+000072A2  D7C7                    1147      ADDA.L D7, A3                       ;OVERLAPPING BIT
+000072A4  36BC 0000               1148      MOVE.W #0,(A3)
+000072A8                          1149      
+000072A8                          1150  DRAW_CAR
+000072A8  41F9 0009612E           1151      LEA GreenPickupTruck, A0   
+000072AE                          1152      
+000072AE  2448                    1153      MOVE.L A0,A2                             
+000072B0  3018                    1154      MOVE.W (A0)+, D0            ;Get header
+000072B2                          1155      
+000072B2  49F9 0028FB12           1156      LEA SpritePositioning, A4
+000072B8  47F9 0028FB0C           1157      LEA CarXIndex, A3
+000072BE  3E13                    1158      MOVE.W (A3),D7
+000072C0                          1159      
+000072C0  D9C7                    1160      ADDA.L D7, A4               ;GET CAR X INDEX
+000072C2  3F14                    1161      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+000072C4  588C                    1162      ADDA.L #4, A4
+000072C6  3F1C                    1163      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+000072C8  3F14                    1164      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+000072CA  598C                    1165      SUBA.L #4, A4
+000072CC  3F14                    1166      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+000072CE  5C8C                    1167      ADDA.L #6, A4
+000072D0  3F1C                    1168      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+000072D2  3F14                    1169      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+000072D4  2F08                    1170      MOVE.L A0,-(SP)
+000072D6                          1171      
+000072D6  5D8C                    1172      SUBA.L #6, A4               ;Bitmap Width
+000072D8                          1173      
+000072D8  43F9 0000757C           1174      LEA CarHeaderState, A1      ;boolean for whether or not the car has been read
+000072DE  0C51 0002               1175      CMPI.W #2,(A1)          
+000072E2  6600 002A               1176      BNE CHECK_WIDTH_0
+000072E6                          1177         
+000072E6  0C54 004B               1178      CMPI.W #CAR_WIDTH,(A4)      ;See if we are reading the bitmap for the full width car
+000072EA  6600 002E               1179      BNE NO_RESTORE
+000072EE                          1180      
+000072EE  43F8 11A6               1181      LEA FullCarWidthCalculations, A1
+000072F2                          1182      
+000072F2                          1183      *The position of the car on screen changes, so we need to update this if we are going to restore the other paramters gathered int he first read header
+000072F2  588C                    1184      ADDA.L #4, A4               ;Get left x screen
+000072F4  3614                    1185      MOVE.W (A4),D3
+000072F6  3A5C                    1186      MOVE.W (A4)+,A5             
+000072F8  3414                    1187      MOVE.W (A4),D2              ;Top Y Screen
+000072FA  0642 002E               1188      ADDI.W #CAR_HEIGHT,D2       ;Bottom Y Screen
+000072FE                          1189  
+000072FE  4CD1 5FF3               1190      MOVEM.L (A1),HEADER_REG     ;Restore the header calculations for full width car bitmap
+00007302  4EB8 118E               1191      JSR SKIP_STORE_HEADER       ;Skip over header calculations
+00007306  DFFC 00000010           1192      ADDA.L #16, A7
+0000730C  4E75                    1193      RTS
+0000730E                          1194  
+0000730E                          1195  CHECK_WIDTH_0
+0000730E  0C54 004B               1196      CMPI.W #CAR_WIDTH,(A4)      ;See if we are reading the bitmap for the full width car
+00007312  6600 0006               1197      BNE NO_RESTORE
+00007316  32BC 0001               1198      MOVE.W #1,(A1)              ;If we are reading full width car for the first time, set state to 1, so we know to store header calculations info
+0000731A                          1199  
+0000731A                          1200  NO_RESTORE    
+0000731A  4EB8 10F0               1201      JSR    READ_THROUGH_HEADER
+0000731E  DFFC 00000010           1202      ADDA.L #16, A7              ;Reset Stack
+00007324  4E75                    1203      RTS        
+00007326                          1204      
+00007326                          1205  CAR_PARTIALLY_ON_SCREEN_RIGHT
+00007326  588C                    1206      ADDA.L #4, A4
+00007328  3E14                    1207      MOVE.W (A4),D7                  ;Leftmos position of car on screen
+0000732A  4286                    1208      CLR.L D6
+0000732C  3C3C 020E               1209      MOVE.W #SCREEN_END_X, D6
+00007330  9C47                    1210      SUB.W D7,D6    
+00007332  598C                    1211      SUBA.L #4, A4
+00007334  3886                    1212      MOVE.W D6,(A4)                  ;Set width of car to be however much of the car is on the "screen" so it doesn't print off screen
+00007336  0C46 0000               1213      CMPI #0, D6
+0000733A  6E00 FF6C               1214      BGT DRAW_CAR
+0000733E  4E75                    1215      RTS
+00007340                          1216      
+00007340                          1217  CAR_PARTIALLY_ON_SCREEN_LEFT
+00007340  4286                    1218      CLR.L D6
+00007342  3C3C 0073               1219      MOVE.W #SCREEN_START_X, D6
+00007346                          1220      
+00007346  49F9 0028FB12           1221      LEA SpritePositioning, A4
+0000734C  4287                    1222      CLR.L D7
+0000734E                          1223      
+0000734E  47F9 0028FB0E           1224      LEA CarXScreenIndex, A3
+00007354  3E13                    1225      MOVE.W (A3),D7
+00007356                          1226  
+00007356  D9C7                    1227      ADDA.L D7, A4
+00007358  4287                    1228      CLR.L D7
+0000735A  3E14                    1229      MOVE.W (A4),D7
+0000735C  2A07                    1230      MOVE.L D7, D5                   ;left X position of car on screen
+0000735E  598C                    1231      SUBA.L #4,A4                    ;WIDTH OF CAR
+00007360  DE54                    1232      ADD.W (A4),D7                   ;D7 IS LEFTMOST POSITION OF CAR ON SCREEN, BECOMES RIGHT MOST X
+00007362  9E46                    1233      SUB.W D6,D7                     ;New car width
+00007364  3887                    1234      MOVE.W D7,(A4)                  ;Set width of car to be however much of the car is on the "screen" so it doesn't print off screen    
+00007366                          1235      
+00007366  7673                    1236      MOVE.L #SCREEN_START_X, D3
+00007368  9685                    1237      SUB.L D5, D3
+0000736A                          1238      
+0000736A  584C                    1239      ADDA #4, A4                     ;car x screen
+0000736C                          1240      
+0000736C  0C54 0073               1241      CMP.W #SCREEN_START_X, (A4)
+00007370  6E00 000C               1242      BGT CAR_NOT_OFF_SCREEN
+00007374                          1243      
+00007374  38BC 0073               1244      MOVE.W #SCREEN_START_X, (A4)
+00007378  588C                    1245      ADDA.L #4,A4
+0000737A  38BC 0000               1246      MOVE.W #0,(A4)
+0000737E                          1247      
+0000737E                          1248  CAR_NOT_OFF_SCREEN    
+0000737E  41F9 0009612E           1249      LEA GreenPickupTruck, A0   
+00007384  2448                    1250      MOVE.L A0,A2                             
+00007386  3018                    1251      MOVE.W (A0)+, D0                ;Get header
+00007388                          1252      
+00007388  3F03                    1253      MOVE.W D3,-(SP)                 ;TOP LEFT X CHUNK
+0000738A  3F07                    1254      MOVE.W D7,-(SP)                 ;CHUNK WIDTH
+0000738C  5D8C                    1255      SUBA.L #6, A4
+0000738E  3F14                    1256      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+00007390  598C                    1257      SUBA.L #4, A4
+00007392  3F14                    1258      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+00007394  5C8C                    1259      ADDA.L #6, A4
+00007396  3F1C                    1260      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+00007398  3F14                    1261      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+0000739A  2F08                    1262      MOVE.L A0,-(SP)
+0000739C                          1263      
+0000739C  4EB8 10F0               1264      JSR    READ_THROUGH_HEADER
+000073A0  DFFC 00000010           1265      ADDA.L #16, A7
+000073A6                          1266      
+000073A6  4E75                    1267      RTS
+000073A8                          1268  
+000073A8                          1269  REDRAW_CAR_BACKGROUND_LAST
+000073A8  4280                    1270      CLR.L D0
+000073AA  4281                    1271      CLR.L D1
+000073AC  4282                    1272      CLR.L D2
+000073AE  227C 00000000           1273      MOVE.L #0, A1
+000073B4                          1274      
+000073B4  4EB8 7198               1275      JSR REDRAW_CAR_BACKGROUND
+000073B8                          1276      
+000073B8  49F9 0028FB12           1277      LEA SpritePositioning,A4
+000073BE                          1278      
+000073BE  47F9 0028FB0C           1279      LEA CarXIndex, A3
+000073C4  3E13                    1280      MOVE.W (A3),D7
+000073C6  D9C7                    1281      ADDA.L D7, A4               ;Gets Car X position
+000073C8                          1282      
+000073C8  38BC 0000               1283      MOVE.W #CAR_START_X,(A4)
+000073CC  588C                    1284      ADDA.L #4,A4
+000073CE  38BC 004B               1285      MOVE.W #CAR_WIDTH,(A4)
+000073D2  588C                    1286      ADDA.L #4,A4
+000073D4  38BC 020E               1287      MOVE.W #SCREEN_END_X,(A4)
+000073D8  588C                    1288      ADDA.L #4,A4
+000073DA  38BC 019B               1289      MOVE.W #BITMAP_END_X,(A4)    
+000073DE  588C                    1290      ADDA.L #4,A4
+000073E0  28BC 00000000           1291      MOVE.L #0,(A4)              ;RESET CAR TO BE NO LONGER MOVING    
+000073E6                          1292   
+000073E6  4E75                    1293      RTS
+000073E8                          1294      
+000073E8                          1295  COLLISION_X_AXIS
+000073E8                          1296      *CHECK FOR COLLISION ON y-AXIS AS WELL
+000073E8  5C8C                    1297      ADDA.L #6, A4               ;y coordinate of car
+000073EA  3E13                    1298      MOVE.W (A3),D7              ;Y COORDINATE OF CAT
+000073EC  3C14                    1299      MOVE.W (A4),D6
+000073EE  BC47                    1300      CMP.W D7,D6                 ;Compare y values of cat and car 
+000073F0  6600 FEB6               1301      BNE DRAW_CAR
+000073F4                          1302  
+000073F4                          1303  COLLISION_Y_AXIS
+000073F4  5C8C                    1304      ADDA.L #6, A4               ;OVERLAPPING BIT
+000073F6  0C54 0001               1305      CMP.W #1,(A4)               ;IF EQUAL, CAT AND CAR HAVE ALREADY COLLIDED FOR 1 FRAME
+000073FA  6700 9F78               1306      BEQ UPDATE_CAT              ;IF CAT AND CAR ARE CURRENTLY IN THE SHOCK STATE, DO NOT REDRAW IT
+000073FE                          1307      
+000073FE  43F8 6FAC               1308      LEA CatState, A1
+00007402  32BC 0002               1309      MOVE.W #2,(A1)
+00007406  38BC 0001               1310      MOVE.W #1,(A4)              ;Car is in overlap state
+0000740A                          1311      
+0000740A                          1312       ;CALCULATE NUMBER OF LIVES LEFT
+0000740A  4287                    1313      CLR.L D7                  
+0000740C  41F9 0000754E           1314      LEA LivesLeft,A0
+00007412  5350                    1315      SUBI.W #1,(A0)
+00007414  3E10                    1316      MOVE.W (A0),D7
+00007416                          1317     
+00007416  4EB9 000079E2           1318      JSR LOAD_SS                 ;Print lives left
+0000741C                          1319  
+0000741C                          1320      ;if lives left is 0, game over
+0000741C  43F9 0000754E           1321      LEA LivesLeft,A1                       
+00007422  0C51 0000               1322      CMP.W #0,(A1)
+00007426  6700 FBDA               1323      BEQ LOSE_SCREEN
+0000742A                          1324      
+0000742A  4EB9 00007922           1325      JSR CAT_SCREAM
+00007430                          1326          
+00007430  0C51 0000               1327      CMP.W #0,(A1)
+00007434  6600 9F3E               1328      BNE UPDATE_CAT 
+00007438                          1329      
+00007438                          1330      
+00007438                          1331  SET_CAR_UPPER_TO_MOVING
+00007438  4DF9 0028FB0C           1332      LEA CarXIndex, A6
+0000743E  43F9 0028FB0E           1333      LEA CarXScreenIndex,A1 
+00007444  0451 0014               1334      SUBI.W #20,(A1)
+00007448  0456 0014               1335      SUBI.W #20,(A6)
+0000744C                          1336      
+0000744C  4BF9 0028FB12           1337      LEA SpritePositioning, A5
+00007452  4287                    1338      CLR.L D7
+00007454  3E16                    1339      MOVE.W (A6),D7
+00007456  0687 00000012           1340      ADDI.L #18, D7               ;Bring pointer to moving bool
+0000745C  DBC7                    1341      ADDA.L D7, A5
+0000745E                          1342      
+0000745E  3ABC 0001               1343      MOVE.W #1,(A5)
+00007462                          1344      
+00007462  0651 0014               1345      ADDI.W #20,(A1)
+00007466  0656 0014               1346      ADDI.W #20,(A6)
+0000746A                          1347      
+0000746A  4E75                    1348      RTS
+0000746C                          1349  
+0000746C                          1350  SET_CAR_LOWER_TO_MOVING
+0000746C  4BF9 0028FB12           1351      LEA SpritePositioning, A5
+00007472  4DF9 0028FB0C           1352      LEA CarXIndex,A6
+00007478  43F9 0028FB0E           1353      LEA CarXScreenIndex,A1 
+0000747E                          1354      
+0000747E  4287                    1355      CLR.L D7
+00007480  3E16                    1356      MOVE.W (A6),D7
+00007482  0687 00000012           1357      ADDI.L #18, D7               ;Bring pointer to moving bool
+00007488  DBC7                    1358      ADDA.L D7, A5
+0000748A                          1359      
+0000748A  3ABC 0001               1360      MOVE.W #1,(A5)
+0000748E                          1361      
+0000748E  4E75                    1362      RTS
+00007490                          1363      
+00007490                          1364  SPAWN_CARS
+00007490  41F9 00007550           1365      LEA CarSpawnTimes, A0
+00007496                          1366      
+00007496  B258                    1367      CMP.W (A0)+,D1
+00007498  6E00 0004               1368      BGT CHECK_TIME_2_CAR_2
+0000749C  4E75                    1369      RTS
+0000749E                          1370      
+0000749E                          1371  CHECK_TIME_2_CAR_2    
+0000749E  B258                    1372      CMP.W (A0)+,D1
+000074A0  6DCA                    1373      BLT SET_CAR_LOWER_TO_MOVING
+000074A2                          1374      
+000074A2  B258                    1375      CMP.W (A0)+,D1
+000074A4  6E00 0004               1376      BGT CHECK_TIME_2_CAR_3
+000074A8  4E75                    1377      RTS
+000074AA                          1378      
+000074AA                          1379  CHECK_TIME_2_CAR_3 
+000074AA  B258                    1380      CMP.W (A0)+,D1
+000074AC  6D8A                    1381      BLT SET_CAR_UPPER_TO_MOVING
+000074AE                          1382      
+000074AE  B258                    1383      CMP.W (A0)+,D1
+000074B0  6E00 0004               1384      BGT CHECK_TIME_2_CAR_4
+000074B4  4E75                    1385      RTS
+000074B6                          1386      
+000074B6                          1387  CHECK_TIME_2_CAR_4 
+000074B6  B258                    1388      CMP.W (A0)+,D1
+000074B8  6DB2                    1389      BLT SET_CAR_LOWER_TO_MOVING
+000074BA                          1390      
+000074BA  B258                    1391      CMP.W (A0)+,D1
+000074BC  6E00 0004               1392      BGT CHECK_TIME_2_CAR_5
+000074C0  4E75                    1393      RTS
+000074C2                          1394      
+000074C2                          1395  CHECK_TIME_2_CAR_5 
+000074C2  B258                    1396      CMP.W (A0)+,D1
+000074C4  6DA6                    1397      BLT SET_CAR_LOWER_TO_MOVING    
+000074C6                          1398      
+000074C6  B258                    1399      CMP.W (A0)+,D1
+000074C8  6E00 0004               1400      BGT CHECK_TIME_2_CAR_6
+000074CC  4E75                    1401      RTS
+000074CE                          1402      
+000074CE                          1403  CHECK_TIME_2_CAR_6 
+000074CE                          1404      
+000074CE  B258                    1405      CMP.W (A0)+,D1
+000074D0  6D00 FF66               1406      BLT SET_CAR_UPPER_TO_MOVING    
+000074D4                          1407      
+000074D4  B258                    1408      CMP.W (A0)+,D1
+000074D6  6E00 0004               1409      BGT CHECK_TIME_2_CAR_7
+000074DA  4E75                    1410      RTS
+000074DC                          1411      
+000074DC                          1412  CHECK_TIME_2_CAR_7 
+000074DC                          1413      
+000074DC  B258                    1414      CMP.W (A0)+,D1
+000074DE  6D8C                    1415      BLT SET_CAR_LOWER_TO_MOVING    
+000074E0                          1416      
+000074E0  B258                    1417      CMP.W (A0)+,D1
+000074E2  6E00 0004               1418      BGT CHECK_TIME_2_CAR_8
+000074E6  4E75                    1419      RTS
+000074E8                          1420      
+000074E8                          1421  CHECK_TIME_2_CAR_8 
+000074E8                          1422      
+000074E8  B258                    1423      CMP.W (A0)+,D1
+000074EA  6D00 FF4C               1424      BLT SET_CAR_UPPER_TO_MOVING    
+000074EE                          1425      
+000074EE  B258                    1426      CMP.W (A0)+,D1
+000074F0  6E00 0004               1427      BGT CHECK_TIME_2_CAR_9
+000074F4  4E75                    1428      RTS
+000074F6                          1429      
+000074F6                          1430  CHECK_TIME_2_CAR_9 
+000074F6                          1431      
+000074F6  B258                    1432      CMP.W (A0)+,D1
+000074F8  6D00 FF72               1433      BLT SET_CAR_LOWER_TO_MOVING     
+000074FC                          1434      
+000074FC  B258                    1435      CMP.W (A0)+,D1
+000074FE  6E00 0004               1436      BGT CHECK_TIME_2_CAR_10
+00007502  4E75                    1437      RTS
+00007504                          1438      
+00007504                          1439  CHECK_TIME_2_CAR_10 
+00007504                          1440      
+00007504  B258                    1441      CMP.W (A0)+,D1
+00007506  6D00 FF30               1442      BLT SET_CAR_UPPER_TO_MOVING   
+0000750A                          1443   
+0000750A  B258                    1444      CMP.W (A0)+,D1
+0000750C  6E00 0004               1445      BGT CHECK_TIME_2_CAR_11
+00007510  4E75                    1446      RTS
+00007512                          1447      
+00007512                          1448  CHECK_TIME_2_CAR_11 
+00007512                          1449      
+00007512  B258                    1450      CMP.W (A0)+,D1
+00007514  6D00 FF56               1451      BLT SET_CAR_LOWER_TO_MOVING  
+00007518  4E75                    1452      RTS
+0000751A                          1453      
+0000751A                          1454  CHANGE_WIDTH_BACK
+0000751A  38BC 004B               1455      MOVE.W #CAR_WIDTH,(A4)
+0000751E  4E75                    1456      RTS
+00007520                          1457  
+00007520                          1458  DECREASE_CAR_POINTER
+00007520  41F9 0028FB0C           1459      LEA CarXIndex, A0
+00007526  43F9 0028FB0E           1460      LEA CarXScreenIndex,A1 
+0000752C  0451 0014               1461      SUBI.W #DISTANCE_BTWN_CAR_POINTERS,(A1)                 ;Decrease car pointer to point to car 1
+00007530  0450 0014               1462      SUBI.W #DISTANCE_BTWN_CAR_POINTERS,(A0)
+00007534  4E75                    1463      RTS
+00007536                          1464  
+00007536                          1465  INCREASE_CAR_POINTER
+00007536  41F9 0028FB0C           1466      LEA CarXIndex, A0       
+0000753C  43F9 0028FB0E           1467      LEA CarXScreenIndex,A1
+00007542  0651 0014               1468      ADDI.W #DISTANCE_BTWN_CAR_POINTERS,(A1)                 ;Increase car pointer to point to car 2
+00007546  0650 0014               1469      ADDI.W #DISTANCE_BTWN_CAR_POINTERS,(A0)
+0000754A  4E75                    1470      RTS
+0000754C                          1471  
+0000754C                          1472  
+0000754C                          1473  
+0000754C                          1474  paddingword1                ds.w 1
+0000754E                          1475  
+0000754E= 0002                    1476  LivesLeft                   dc.w 2
+00007550                          1477  
+00007550                          1478  CarSpawnTimes
+00007550= 01F4 0320 0352 0...     1479      dc.w 500,800,    850,1150,    1200,1500,    1900,2200,      2400,2700,    3000, 3300,     3400, 3700,     3770,4070,      4120, 4420,     4470, 4770,      5000, 5300                 
+0000757C                          1480  
+0000757C                          1481  
+0000757C= 0000                    1482  CarHeaderState              dc.w 0
+0000757E                          1483  
+0000757E                          1484  
+0000757E                          1485  
+0000757E                          1486  
+0000757E                          1487  
+0000757E                          1488  
+0000757E                          1489  
+0000757E                          1490  
+0000757E                          1491  
+0000757E                          1492  
+0000757E                          1493  
+0000757E                          1494  
+0000757E                          1495  
+0000757E                          1496  
+0000757E                          1497  -------------------- end include --------------------
+0000757E                          1498      INCLUDE UIManager.X68
+0000757E                          1499  ;                It draws all four sides of the border using filled rectangles, then overlays
+0000757E                          1500  ;                directional instructions and interactive UI components like the Start and Restart button. 
+0000757E                          1501  COLORS
+0000757E  =00FFFFFF               1502  WHITE                           EQU     $FFFFFF
+0000757E  =00D4A665               1503  BORDER_COLOR                    EQU     $D4A665 
+0000757E  =006F6F73               1504  OUTER_BUTTON_PEN_COLOR          EQU     $6F6F73 
+0000757E  =00D9D9D9               1505  OUTER_BUTTON_FILL_COLOR         EQU     $D9D9D9
+0000757E  =009F9FAA               1506  INNER_BUTTON_PEN_COLOR          EQU     $9F9FAA
+0000757E  =00000000               1507  BLACK                           EQU     $000000
+0000757E                          1508  
+0000757E  =0000005D               1509  SET_PEN_WIDTH_COMMAND           EQU     93
+0000757E  =00000057               1510  DRAW_FILLED_RECTANGLE_COMMAND   EQU     87
+0000757E  =00000051               1511  SET_FILL_COLOR_COMMAND          EQU     81
+0000757E  =00000050               1512  SET_PEN_COLOR_COMMAND           EQU     80
+0000757E  =00000015               1513  SET_FONT_COMMAND                EQU     21
+0000757E                          1514  
+0000757E                          1515  
+0000757E  =00000000               1516  LEFT_BORDER_LEFT_X              EQU     0
+0000757E  =00000074               1517  LEFT_BORDER_RIGHT_X             EQU     116
+0000757E  =000001E0               1518  LEFT_BORDER_BOTTOM_Y            EQU     480
+0000757E  =000002A8               1519  TOP_BORDER_RIGHT_X              EQU     680
+0000757E  =00000042               1520  TOP_BORDER_BOTTOM_Y             EQU     66
+0000757E  =0000020D               1521  RIGHT_BORDER_LEFT_X             EQU     525
+0000757E  =0000019F               1522  BOTTOM_BORDER_TOP_Y             EQU     415
+0000757E                          1523  
+0000757E  =000000A9               1524  DIRECTIONS_TOP_SCREEN_X         EQU     169
+0000757E  =00000019               1525  DIRECTIONS_TOP_SCREEN_Y         EQU     25
+0000757E  =0000000A               1526  DIRECTIONS_BOTTOM_SCREEN_X      EQU     10
+0000757E  =000001B2               1527  DIRECTIONS_BOTTOM_SCREEN_Y      EQU     434
+0000757E                          1528  
+0000757E  =00000002               1529  START_BOX_LINE_WIDTH            EQU     2
+0000757E  =00000111               1530  START_BUTTON_INNER_LEFT_X       EQU     273
+0000757E  =00000111               1531  START_BUTTON_INNER_TOP_Y        EQU     273
+0000757E  =0000016F               1532  START_BUTTON_INNER_RIGHT_X      EQU     367
+0000757E  =0000012A               1533  START_BUTTON_INNER_BOTTOM_Y     EQU     298
+0000757E  =00000125               1534  START_BUTTON_TEXT_X             EQU     293
+0000757E  =00000112               1535  START_BUTTON_TEXT_Y             EQU     274
+0000757E                          1536  
+0000757E  =0000010E               1537  START_BUTTON_OUTER_LEFT_X       EQU     270
+0000757E  =00000172               1538  START_BUTTON_OUTER_RIGHT_X      EQU     370
+0000757E  =0000010E               1539  START_BUTTON_OUTER_TOP_Y        EQU     270
+0000757E  =0000012C               1540  START_BUTTON_OUTER_BOTTOM_Y     EQU     300
+0000757E                          1541  
+0000757E  =00000179               1542  ARE_YOU_SURE_INNER_RIGHT_X      EQU     377
+0000757E  =0000017C               1543  ARE_YOU_SURE_OUTER_RIGHT_X      EQU     380
+0000757E                          1544  
+0000757E  =00000113               1545  LIVES_TEXT_X                    EQU     275
+0000757E  =0000001E               1546  LIVES_TEXT_Y                    EQU     30
+0000757E                          1547  
+0000757E  =0000023F               1548  RESTART_BUTTON_TEXT_X           EQU     575
+0000757E  =0000000A               1549  RESTART_BUTTON_TEXT_Y           EQU     10
+0000757E  =00000247               1550  RESTART_BUTTON_LEFT_X           EQU     583
+0000757E  =0000000A               1551  RESTART_BUTTON_TOP_Y            EQU     10
+0000757E  =0000027E               1552  RESTART_BUTTON_RIGHT_X          EQU     638
+0000757E  =00000019               1553  RESTART_BUTTON_BOTTOM_Y         EQU     25
+0000757E                          1554  
+0000757E                          1555  
+0000757E  =00000118               1556  LOADING_TEXT_X                  EQU     280
+0000757E                          1557  
+0000757E                          1558  DRAW_BORDER 
+0000757E                          1559      ;Set pen color   
+0000757E  223C 00D4A665           1560      MOVE.L  #BORDER_COLOR,D1
+00007584  103C 0050               1561      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+00007588  4E4F                    1562      TRAP    #15
+0000758A                          1563      
+0000758A                          1564      ;Set fill color 
+0000758A  103C 0051               1565      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+0000758E  223C 00D4A665           1566      MOVE.L #BORDER_COLOR, D1
+00007594  4E4F                    1567      TRAP #15
+00007596                          1568      
+00007596                          1569      ;draw lefthand side
+00007596  323C 0000               1570      MOVE.W  #LEFT_BORDER_LEFT_X,D1
+0000759A  343C 0000               1571      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+0000759E  363C 0074               1572      MOVE.W  #LEFT_BORDER_RIGHT_X,D3
+000075A2  383C 01E0               1573      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+000075A6  103C 0057               1574      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000075AA  4E4F                    1575      TRAP    #15
+000075AC                          1576      
+000075AC                          1577      ;draw top side
+000075AC  323C 0074               1578      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+000075B0  343C 0000               1579      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+000075B4  363C 02A8               1580      MOVE.W  #TOP_BORDER_RIGHT_X,D3
+000075B8  383C 0042               1581      MOVE.W  #TOP_BORDER_BOTTOM_Y,D4
+000075BC  103C 0057               1582      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000075C0  4E4F                    1583      TRAP    #15
+000075C2                          1584      
+000075C2                          1585      ;draw righthand side
+000075C2  323C 020D               1586      MOVE.W  #RIGHT_BORDER_LEFT_X,D1
+000075C6  343C 0042               1587      MOVE.W  #TOP_BORDER_BOTTOM_Y,D2
+000075CA  363C 02A8               1588      MOVE.W  #TOP_BORDER_RIGHT_X,D3
+000075CE  383C 01E0               1589      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+000075D2  103C 0057               1590      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000075D6  4E4F                    1591      TRAP    #15
+000075D8                          1592      
+000075D8                          1593      ;draw bottom side
+000075D8  323C 0074               1594      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+000075DC  343C 019F               1595      MOVE.W  #BOTTOM_BORDER_TOP_Y,D2
+000075E0  363C 020D               1596      MOVE.W  #RIGHT_BORDER_LEFT_X,D3
+000075E4  383C 01E0               1597      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+000075E8  103C 0057               1598      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000075EC  4E4F                    1599      TRAP    #15
+000075EE                          1600      
+000075EE  223C 00FFFFFF           1601      MOVE.L #WHITE, D1
+000075F4  4282                    1602      CLR.L D2
+000075F6  143C 0004               1603      MOVE.B #4, D2       ;FONT STYLE
+000075FA  E14A                    1604      LSL #8, D2
+000075FC  143C 000A               1605      MOVE.B #10, D2      ;FONT SIZE
+00007600  E18A                    1606      LSL.L #8, D2
+00007602  E18A                    1607      LSL.L #8, D2
+00007604                          1608      
+00007604  7015                    1609      MOVE.L #SET_FONT_COMMAND, D0
+00007606  4E4F                    1610      TRAP    #15
+00007608                          1611      
+00007608  43F9 00007830           1612      LEA DirectionsTop, A1   
+0000760E                          1613      
+0000760E  323C 00A9               1614      MOVE.W #DIRECTIONS_TOP_SCREEN_X, D1
+00007612  343C 0019               1615      MOVE.W #DIRECTIONS_TOP_SCREEN_Y, D2
+00007616  705F                    1616      MOVE.L #DRAW_TEXT_COMMAND, D0
+00007618  4E4F                    1617      TRAP #15
+0000761A                          1618       
+0000761A  43F9 0000785C           1619      LEA DirectionsBottom, A1   
+00007620                          1620      
+00007620  323C 000A               1621      MOVE.W #DIRECTIONS_BOTTOM_SCREEN_X, D1
+00007624  343C 01B2               1622      MOVE.W #DIRECTIONS_BOTTOM_SCREEN_Y, D2
+00007628  4E4F                    1623      TRAP #15
+0000762A                          1624      
+0000762A  223C 006F6F73           1625      MOVE.L #OUTER_BUTTON_PEN_COLOR, D1
+00007630  7050                    1626      MOVE.L #SET_PEN_COLOR_COMMAND, D0
+00007632  4E4F                    1627      TRAP #15
+00007634                          1628      
+00007634  7202                    1629      MOVE.L  #START_BOX_LINE_WIDTH,D1
+00007636  103C 005D               1630      MOVE.B  #SET_PEN_WIDTH_COMMAND,D0
+0000763A  4E4F                    1631      TRAP    #15
+0000763C                          1632      
+0000763C  223C 00D9D9D9           1633      MOVE.L #OUTER_BUTTON_FILL_COLOR, D1
+00007642  7051                    1634      MOVE.L #SET_FILL_COLOR_COMMAND, D0
+00007644  4E4F                    1635      TRAP #15
+00007646                          1636      
+00007646  323C 010E               1637      MOVE.W  #START_BUTTON_OUTER_LEFT_X ,D1
+0000764A  343C 010E               1638      MOVE.W  #START_BUTTON_OUTER_TOP_Y ,D2
+0000764E  363C 0172               1639      MOVE.W  #START_BUTTON_OUTER_RIGHT_X,D3
+00007652  383C 012C               1640      MOVE.W  #START_BUTTON_OUTER_BOTTOM_Y,D4
+00007656  103C 0057               1641      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+0000765A  4E4F                    1642      TRAP    #15
+0000765C                          1643      
+0000765C  223C 009F9FAA           1644      MOVE.L #INNER_BUTTON_PEN_COLOR, D1
+00007662  7050                    1645      MOVE.L #SET_PEN_COLOR_COMMAND, D0
+00007664  4E4F                    1646      TRAP #15
+00007666                          1647      
+00007666  223C 00FFFFFF           1648      MOVE.L #WHITE, D1
+0000766C  7051                    1649      MOVE.L #SET_FILL_COLOR_COMMAND, D0
+0000766E  4E4F                    1650      TRAP #15
+00007670                          1651      
+00007670  323C 0111               1652      MOVE.W  #START_BUTTON_INNER_LEFT_X ,D1
+00007674  343C 0111               1653      MOVE.W  #START_BUTTON_INNER_TOP_Y ,D2
+00007678  363C 016F               1654      MOVE.W  #START_BUTTON_INNER_RIGHT_X,D3
+0000767C  383C 012A               1655      MOVE.W  #START_BUTTON_INNER_BOTTOM_Y,D4
+00007680  103C 0057               1656      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00007684  4E4F                    1657      TRAP    #15
+00007686                          1658      
+00007686  7200                    1659      MOVE.L #BLACK, D1
+00007688  4282                    1660      CLR.L D2
+0000768A  143C 0006               1661      MOVE.B #6, D2
+0000768E  E14A                    1662      LSL #8, D2
+00007690  143C 000E               1663      MOVE.B #14, D2
+00007694  E18A                    1664      LSL.L #8, D2
+00007696  E18A                    1665      LSL.L #8, D2
+00007698                          1666      
+00007698  7015                    1667      MOVE.L #SET_FONT_COMMAND, D0
+0000769A  4E4F                    1668      TRAP    #15
+0000769C                          1669      
+0000769C  43F9 000077E8           1670      LEA StartText,A1
+000076A2  323C 0125               1671      MOVE.W #START_BUTTON_TEXT_X, D1
+000076A6  343C 0112               1672      MOVE.W #START_BUTTON_TEXT_Y, D2
+000076AA  705F                    1673      MOVE.L #DRAW_TEXT_COMMAND, D0
+000076AC  4E4F                    1674      TRAP #15
+000076AE                          1675      
+000076AE                          1676      *MODIFYING RESTART BUTTON FONT
+000076AE  E04A                    1677      LSR #8, D2
+000076B0  E04A                    1678      LSR #8, D2
+000076B2  143C 000A               1679      MOVE.B #10, D2  ;FONT SIZE
+000076B6  E18A                    1680      LSL.L #8, D2
+000076B8  E18A                    1681      LSL.L #8, D2 
+000076BA                          1682      
+000076BA  7015                    1683      MOVE.L #SET_FONT_COMMAND, D0
+000076BC  4E4F                    1684      TRAP    #15
+000076BE                          1685      
+000076BE  43F9 00007800           1686      LEA RestartText, A1
+000076C4  323C 023F               1687      MOVE.W #RESTART_BUTTON_TEXT_X, D1
+000076C8  343C 000A               1688      MOVE.W #RESTART_BUTTON_TEXT_Y, D2
+000076CC  705F                    1689      MOVE.L #DRAW_TEXT_COMMAND, D0
+000076CE  4E4F                    1690      TRAP #15
+000076D0                          1691  
+000076D0  4E75                    1692      RTS
+000076D2                          1693      
+000076D2                          1694      
+000076D2                          1695  CLEAR_DIRECTIONS
+000076D2                          1696      ;Set pen color   
+000076D2  223C 00D4A665           1697      MOVE.L  #BORDER_COLOR,D1
+000076D8  103C 0050               1698      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+000076DC  4E4F                    1699      TRAP    #15
+000076DE                          1700      
+000076DE                          1701      ;Set fill color 
+000076DE  103C 0051               1702      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+000076E2  4E4F                    1703      TRAP #15
+000076E4                          1704       
+000076E4                          1705      ;draw top side
+000076E4  323C 0074               1706      MOVE.W  #LEFT_BORDER_RIGHT_X,D1
+000076E8  343C 0000               1707      MOVE.W  #LEFT_BORDER_LEFT_X,D2
+000076EC  363C 020D               1708      MOVE.W  #RIGHT_BORDER_LEFT_X,D3
+000076F0  383C 0042               1709      MOVE.W  #TOP_BORDER_BOTTOM_Y,D4
+000076F4  103C 0057               1710      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000076F8  4E4F                    1711      TRAP    #15
+000076FA                          1712      
+000076FA                          1713      ;draw bottom side
+000076FA  323C 0000               1714      MOVE.W  #LEFT_BORDER_LEFT_X,D1
+000076FE  343C 019F               1715      MOVE.W  #BOTTOM_BORDER_TOP_Y,D2
+00007702  363C 02A8               1716      MOVE.W  #TOP_BORDER_RIGHT_X ,D3
+00007706  383C 01E0               1717      MOVE.W  #LEFT_BORDER_BOTTOM_Y,D4
+0000770A  103C 0057               1718      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+0000770E  4E4F                    1719      TRAP    #15
+00007710                          1720      
+00007710  4E75                    1721      RTS
+00007712                          1722  
+00007712                          1723  PRINT_LIVES_TEXT
+00007712                          1724      ;Set fill color
+00007712  223C 00D4A665           1725      MOVE.L  #BORDER_COLOR,D1 
+00007718  103C 0051               1726      MOVE.B #SET_FILL_COLOR_COMMAND, D0
+0000771C  4E4F                    1727      TRAP #15
+0000771E                          1728      
+0000771E  43F9 0000780C           1729      LEA LivesText,A1
+00007724  323C 0113               1730      MOVE.W #LIVES_TEXT_X, D1
+00007728  343C 001E               1731      MOVE.W #LIVES_TEXT_Y, D2
+0000772C  705F                    1732      MOVE.L #DRAW_TEXT_COMMAND, D0
+0000772E  4E4F                    1733      TRAP #15
+00007730                          1734      
+00007730  4E75                    1735      RTS
+00007732                          1736  
+00007732                          1737  PRINT_GAMEPLAY_TIPS   
+00007732  223C 00FFFFFF           1738      MOVE.L #WHITE, D1
+00007738  4282                    1739      CLR.L D2
+0000773A  143C 0004               1740      MOVE.B #4, D2       ;FONT STYLE
+0000773E  E14A                    1741      LSL #8, D2
+00007740  143C 000A               1742      MOVE.B #10, D2      ;FONT SIZE
+00007744  E18A                    1743      LSL.L #8, D2
+00007746  E18A                    1744      LSL.L #8, D2
+00007748                          1745      
+00007748  7015                    1746      MOVE.L #SET_FONT_COMMAND, D0
+0000774A  4E4F                    1747      TRAP    #15
+0000774C                          1748       
+0000774C  43F9 000078B0           1749      LEA GameplayDirections, A1   
+00007752                          1750      
+00007752  323C 000A               1751      MOVE.W #DIRECTIONS_BOTTOM_SCREEN_X, D1
+00007756  343C 01B2               1752      MOVE.W #DIRECTIONS_BOTTOM_SCREEN_Y, D2
+0000775A  705F                    1753      MOVE.L #DRAW_TEXT_COMMAND, D0
+0000775C  4E4F                    1754      TRAP #15
+0000775E                          1755  
+0000775E  4E75                    1756      RTS
+00007760                          1757  
+00007760                          1758  
+00007760                          1759  SET_BUFFER
+00007760                          1760      *set double buffered mode
+00007760  705C                    1761      MOVE.L  #SET_DOUBLE_BUFFER ,D0
+00007762  7211                    1762      MOVE.L  #17,D1
+00007764  4E4F                    1763      TRAP    #15 
+00007766  4E75                    1764      RTS
+00007768                          1765  
+00007768                          1766  
+00007768                          1767  COPY_BUFFER
+00007768                          1768      *copies buffer
+00007768  103C 005E               1769      MOVE.B  #COPY_DOUBLE_BUFFER,D0
+0000776C  4E4F                    1770      TRAP    #15
+0000776E  4E75                    1771      RTS
+00007770                          1772  
+00007770                          1773  
+00007770                          1774  
+00007770                          1775  DISPLAY_LOADING
+00007770  43F9 000077F4           1776      LEA LoadingText, A1
+00007776  700E                    1777      MOVE.L  #DISPLAY_STRING_COMMAND, D0
+00007778  4E4F                    1778      TRAP #15
+0000777A  4E75                    1779      RTS
+0000777C                          1780      
+0000777C                          1781  PRINT_ARE_YOU_SURE
+0000777C  323C 010E               1782      MOVE.W  #START_BUTTON_OUTER_LEFT_X ,D1
+00007780  343C 0159               1783      MOVE.W  #(START_BUTTON_OUTER_TOP_Y + 75),D2
+00007784  363C 017C               1784      MOVE.W  #ARE_YOU_SURE_OUTER_RIGHT_X,D3
+00007788  383C 0177               1785      MOVE.W  #(START_BUTTON_OUTER_BOTTOM_Y+75),D4
+0000778C  103C 0057               1786      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00007790  4E4F                    1787      TRAP    #15
+00007792                          1788      
+00007792  223C 009F9FAA           1789      MOVE.L #INNER_BUTTON_PEN_COLOR, D1
+00007798  7050                    1790      MOVE.L #SET_PEN_COLOR_COMMAND, D0
+0000779A  4E4F                    1791      TRAP #15
+0000779C                          1792      
+0000779C  223C 00FFFFFF           1793      MOVE.L #WHITE, D1
+000077A2  7051                    1794      MOVE.L #SET_FILL_COLOR_COMMAND, D0
+000077A4  4E4F                    1795      TRAP #15
+000077A6                          1796      
+000077A6  323C 0111               1797      MOVE.W  #START_BUTTON_INNER_LEFT_X ,D1
+000077AA  343C 015C               1798      MOVE.W  #(START_BUTTON_INNER_TOP_Y + 75),D2
+000077AE  363C 0179               1799      MOVE.W  #ARE_YOU_SURE_INNER_RIGHT_X,D3
+000077B2  383C 0175               1800      MOVE.W  #(START_BUTTON_INNER_BOTTOM_Y+75),D4
+000077B6  103C 0057               1801      MOVE.B  #DRAW_FILLED_RECTANGLE_COMMAND, D0
+000077BA  4E4F                    1802      TRAP    #15
+000077BC                          1803      
+000077BC  7200                    1804      MOVE.L #BLACK, D1
+000077BE  4282                    1805      CLR.L D2
+000077C0  143C 0006               1806      MOVE.B #6, D2
+000077C4  E14A                    1807      LSL #8, D2
+000077C6  143C 000A               1808      MOVE.B #10, D2
+000077CA  E18A                    1809      LSL.L #8, D2
+000077CC  E18A                    1810      LSL.L #8, D2
+000077CE                          1811      
+000077CE  7015                    1812      MOVE.L #SET_FONT_COMMAND, D0
+000077D0  4E4F                    1813      TRAP    #15
+000077D2                          1814      
+000077D2  43F9 0000781C           1815      LEA AreYouSureText,A1
+000077D8  323C 0116               1816      MOVE.W #(START_BUTTON_TEXT_X-15), D1
+000077DC  343C 0162               1817      MOVE.W #(START_BUTTON_TEXT_Y+80),D2
+000077E0  705F                    1818      MOVE.L #DRAW_TEXT_COMMAND, D0
+000077E2  4E4F                    1819      TRAP #15
+000077E4                          1820      
+000077E4  4E75                    1821      RTS
+000077E6                          1822  
+000077E6                          1823  paddingword9                ds.w 1
+000077E8= 53746172 74000000 ...   1824  StartText                   dc.l 'Start', 0   
+000077F4= 4C6F6164 696E6700 ...   1825  LoadingText                 dc.l 'Loading', 0  
+00007800= 52657374 61727400 ...   1826  RestarTText                 dc.l 'Restart', 0
+0000780C= 4C697665 73204C65 ...   1827  LivesText                   dc.l 'Lives Left:', 0
+0000781C= 41726520 596F7520 ...   1828  AreYouSureText              dc.l 'Are You Sure?',0
+00007830= 4F48204E 4F21204D ...   1829  DirectionsTop               dc.l 'OH NO! Mittens got lost on his way home.',0
+0000785C= 55736520 74686520 ...   1830  DirectionsBottom            dc.l 'Use the Up and Down arrows to weave between traffic and help mittens get home',0
+000078B0= 5768656E 206E6176 ...   1831  GameplayDirections          dc.l 'When navigating between lanes, hold the up or down arrow until mittens moves.',0
+00007904                          1832  
+00007904                          1833  
+00007904                          1834  
+00007904                          1835  
+00007904                          1836  
+00007904                          1837  
+00007904                          1838  
+00007904                          1839  
+00007904                          1840  -------------------- end include --------------------
+00007904                          1841      INCLUDE SoundManager.X68
+00007904                          1842  ;                Loads in sounds for background music, a cat screaming on collision with a
+00007904                          1843  ;                car, and sounds for winning and losing the game. Also handles stopping the 
+00007904                          1844  ;                background music for when the game is over or when restarted. 
+00007904  =0000004A               1845  LOAD_SOUND_COMMAND              EQU     74
+00007904  =0000004D               1846  PLAY_SOUND_COMMAND              EQU     77
+00007904                          1847  
+00007904                          1848  PLAY_BACKGROUND_MUSIC
+00007904  4281                    1849      CLR.L D1
+00007906  43F9 0000797A           1850      LEA BackgroundMusic, A1
+0000790C  704A                    1851      MOVE.L #LOAD_SOUND_COMMAND, D0
+0000790E  4E4F                    1852      TRAP #15
+00007910                          1853      
+00007910  704D                    1854      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007912  7400                    1855      MOVE.L #0, D2                       ;Play sound once
+00007914  4E4F                    1856      TRAP #15
+00007916  4E75                    1857      RTS
+00007918                          1858  STOP_BACKGROUND_MUSIC
+00007918  7200                    1859      MOVE.L #0, D1                       ;reference to background music
+0000791A  704D                    1860      MOVE.L #PLAY_SOUND_COMMAND,D0
+0000791C  7402                    1861      MOVE.L #2, D2                       ;Stop all sounds 
+0000791E  4E4F                    1862      TRAP #15
+00007920  4E75                    1863      RTS
+00007922                          1864      
+00007922                          1865  CAT_SCREAM
+00007922  4281                    1866      CLR.L D1
+00007924  7201                    1867      MOVE.L #1, D1                       ;Loading sound into index 1
+00007926  43F9 00007992           1868      LEA CatScream, A1
+0000792C  704A                    1869      MOVE.L #LOAD_SOUND_COMMAND, D0
+0000792E  4E4F                    1870      TRAP #15
+00007930                          1871      
+00007930  704D                    1872      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007932  7400                    1873      MOVE.L #0, D2                       ;Play sound once
+00007934  4E4F                    1874      TRAP #15
+00007936  4E75                    1875      RTS
+00007938                          1876      
+00007938                          1877  WIN_SOUND
+00007938  4281                    1878      CLR.L D1
+0000793A  7202                    1879      MOVE.L #2, D1                       ;Loading sound into index 2
+0000793C  43F9 000079AA           1880      LEA GameWin, A1
+00007942  704A                    1881      MOVE.L #LOAD_SOUND_COMMAND, D0
+00007944  4E4F                    1882      TRAP #15
+00007946                          1883      
+00007946  704D                    1884      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007948  7400                    1885      MOVE.L #0, D2                       ;Play sound once
+0000794A  4E4F                    1886      TRAP #15
+0000794C  4E75                    1887      RTS
+0000794E                          1888      
+0000794E                          1889  LOSE_SOUND
+0000794E  4281                    1890      CLR.L D1
+00007950  7203                    1891      MOVE.L #3, D1                       ;Loading sound into index 3
+00007952  43F9 000079BE           1892      LEA GameOver, A1
+00007958  704A                    1893      MOVE.L #LOAD_SOUND_COMMAND, D0
+0000795A  4E4F                    1894      TRAP #15
+0000795C                          1895      
+0000795C  704D                    1896      MOVE.L #PLAY_SOUND_COMMAND,D0
+0000795E  7400                    1897      MOVE.L #0, D2                       ;Play sound once
+00007960  4E4F                    1898      TRAP #15
+00007962  4E75                    1899      RTS
+00007964                          1900      
+00007964                          1901  LETS_GO_SOUND
+00007964  4281                    1902      CLR.L D1
+00007966  7204                    1903      MOVE.L #4, D1                       ;Loading sound into index 3
+00007968  43F9 000079D2           1904      LEA LetsGo, A1
+0000796E  704A                    1905      MOVE.L #LOAD_SOUND_COMMAND, D0
+00007970  4E4F                    1906      TRAP #15
+00007972                          1907      
+00007972  704D                    1908      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007974  7400                    1909      MOVE.L #0, D2                       ;Play sound once
+00007976  4E4F                    1910      TRAP #15
+00007978                          1911      
+00007978  4E75                    1912      RTS
+0000797A                          1913      
+0000797A= 47616D65 2D536F75 ...   1914  BackgroundMusic             dc.l 'Game-Soundtrack.wav',0
+00007992= 6361745F 73637265 ...   1915  CatScream                   dc.l 'cat_screaming.wav',0
+000079AA= 68617070 792D6361 ...   1916  GameWin                     dc.l 'happy-cat.wav',0
+000079BE= 67616D65 2D6F7665 ...   1917  GameOver                    dc.l 'game-over.wav',0
+000079D2= 4C657473 476F2E77 ...   1918  LetsGo                      dc.l 'LetsGo.wav',0
+000079E2                          1919  
+000079E2                          1920  
+000079E2                          1921  
+000079E2                          1922  -------------------- end include --------------------
+000079E2                          1923      INCLUDE SevenSegmentDisplay.X68
+000079E2                          1924  ;                onto the screen using a seven-segment display format. It 
+000079E2                          1925  ;                first uses the number as an index to retrieve a segment encoding 
+000079E2                          1926  ;                from a lookup table. Then, for each segment (A–G), it checks whether
+000079E2                          1927  ;                that segment should be lit and draws the corresponding line using 
+000079E2                          1928  ;                screen coordinates. The routine also clears the previous number display 
+000079E2                          1929  ;                and sets the appropriate pen colors for visual clarity. It is worth noting
+000079E2                          1930  ;                that SS stands for Seven Segment
+000079E2  =00000054               1931  DRAW_LINE_COMMAND               EQU     84
+000079E2  =00000185               1932  A_X1                            EQU     389
+000079E2  =00000025               1933  A_Y1                            EQU     37
+000079E2  =0000018B               1934  A_X2                            EQU     395
+000079E2  =0000002F               1935  D_Y2                            EQU     47
+000079E2                          1936  
+000079E2                          1937  
+000079E2                          1938  LOAD_SS
+000079E2                          1939      ;NUMBER TO PRINT IS PASSED IN THROUGH D7
+000079E2  41F9 00007A52           1940      LEA SevenSegment, A0
+000079E8  E54F                    1941      LSL.W #2, D7 ;OFFSET
+000079EA  D1C7                    1942      ADDA.L D7, A0 ;GETS THE NUMBER TO PRINT
+000079EC  2E10                    1943      MOVE.L (A0),D7
+000079EE  7A01                    1944      MOVE.L #1,D5
+000079F0                          1945      
+000079F0                          1946      ;Set pen color   
+000079F0  223C 00D4A665           1947      MOVE.L  #BORDER_COLOR,D1
+000079F6  103C 0050               1948      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+000079FA  4E4F                    1949      TRAP    #15
+000079FC                          1950      
+000079FC                          1951      ;CLEAR EXISTING NUMBER 
+000079FC  223C 00000185           1952      MOVE.L #A_X1,D1
+00007A02  7425                    1953      MOVE.L #A_Y1,D2
+00007A04  263C 0000018B           1954      MOVE.L #A_X2,D3
+00007A0A  782F                    1955      MOVE.L #D_Y2,D4
+00007A0C  7057                    1956      MOVE.L #DRAW_FILLED_RECTANGLE_COMMAND, D0
+00007A0E  4E4F                    1957      TRAP #15
+00007A10                          1958      
+00007A10                          1959      ;Set pen color   
+00007A10  7200                    1960      MOVE.L  #BLACK,D1
+00007A12  103C 0050               1961      MOVE.B  #SET_PEN_COLOR_COMMAND,D0
+00007A16  4E4F                    1962      TRAP    #15
+00007A18                          1963      
+00007A18  7054                    1964      MOVE.L #DRAW_LINE_COMMAND,D0
+00007A1A                          1965      
+00007A1A  41F9 00007A7A           1966      LEA SevenSegmentDimensions, A0
+00007A20  2248                    1967      MOVE.L A0,A1
+00007A22  D3FC 00000038           1968      ADDA.L #56, A1 ;Used to keep track of the end of the array
+00007A28                          1969      
+00007A28                          1970      
+00007A28                          1971  PRINT_SEGMENT    
+00007A28  2C05                    1972      MOVE.L D5, D6
+00007A2A  CC47                    1973      AND D7, D6
+00007A2C  BC3C 0001               1974      CMP.B #1, D6
+00007A30  6600 0014               1975      BNE INCREASE_A0
+00007A34                          1976      
+00007A34  3218                    1977      MOVE.W (A0)+,D1
+00007A36  3418                    1978      MOVE.W (A0)+,D2
+00007A38  3618                    1979      MOVE.W (A0)+,D3
+00007A3A  3818                    1980      MOVE.W (A0)+,D4
+00007A3C  4E4F                    1981      TRAP #15
+00007A3E  E24F                    1982      LSR #1,D7
+00007A40  B3C8                    1983      CMPA.L A0,A1
+00007A42  6EE4                    1984      BGT PRINT_SEGMENT
+00007A44  4E75                    1985      RTS
+00007A46                          1986      
+00007A46                          1987  INCREASE_A0
+00007A46  E24F                    1988      LSR #1,D7
+00007A48  5088                    1989      ADDA.L #8,A0
+00007A4A  B3C8                    1990      CMPA.L A0,A1
+00007A4C  6EDA                    1991      BGT PRINT_SEGMENT
+00007A4E  4E75                    1992      RTS
+00007A50                          1993      
+00007A50                          1994  
+00007A50                          1995  paddingword                 ds.w 1
+00007A52                          1996  
+00007A52                          1997  SevenSegment 
+00007A52= 0000007E 00000030 ...   1998      dc.l $7E, $30, $6D, $79, $33, $5B, $5F, $70, $7F, $7B
+00007A7A                          1999  
+00007A7A                          2000  
+00007A7A                          2001  SevenSegmentDimensions
+00007A7A= 0186 002A 018B 0...     2002      dc.w 390,42,395,42,  390,37,390,42,   390,42,390,47,   389,47,395,47,   395,42,395,47,   395,37,395,42,   389,37,395,37
+00007AB2                          2003  
+00007AB2                          2004  
+00007AB2                          2005  
+00007AB2                          2006  
+00007AB2                          2007  
+00007AB2                          2008  -------------------- end include --------------------
+00007AB2                          2009      INCLUDE CreateRandomSpawnTimes.X68
+00007AB2                          2010  ;                times by generating a small random delay. The GET_RANDOM_NUM 
+00007AB2                          2011  ;                subroutine seeds a pseudo-random number using the system clock, 
+00007AB2                          2012  ;                processes it to isolate a value between 0 and 300 hundredths of 
+00007AB2                          2013  ;                a second, and adds that offset to the initial spawn times of cars 
+00007AB2                          2014  ;                appearing on screen. The added randomness helps make spawn behavior 
+00007AB2                          2015  ;                feel more dynamic and less predictable during gameplay.
+00007AB2                          2016  GET_RANDOM_NUM
+00007AB2  4EB9 00007AD0           2017          JSR     SEED_RANDOM_NUM         ;Seed 
+00007AB8  4286                    2018          CLR.L   D6
+00007ABA  4EB9 00007AE8           2019          JSR     GET_RANDOM_BYTE_INTO_D6 ;Get a random byte into D6
+00007AC0                          2020  
+00007AC0  CC3C 0003               2021          AND.B   #3,D6                  ;Keep only the lowest 2 bits (00 to 11)
+00007AC4  CCFC 0064               2022          MULU #100,D6                  ;Convert to hundreths of a second
+00007AC8  4EB9 00007B22           2023          JSR ASSIGN_SPAWN_TIMES
+00007ACE  4E75                    2024          RTS
+00007AD0                          2025  
+00007AD0                          2026  SEED_RANDOM_NUM
+00007AD0  48E7 FFFE               2027          MOVEM.L ALL_REG,-(sp)
+00007AD4  4286                    2028          CLR.L   D6
+00007AD6  103C 0008               2029          MOVE.B  #GET_TIME_COMMAND,D0
+00007ADA  4E4F                    2030          TRAP    #15                     ;Get time into D1
+00007ADC  23C1 00007B34           2031          MOVE.L  D1,RandomVal
+00007AE2  4CDF 7FFF               2032          MOVEM.L (SP)+,ALL_REG
+00007AE6  4E75                    2033          RTS
+00007AE8                          2034          
+00007AE8                          2035  GET_RANDOM_BYTE_INTO_D6
+00007AE8  48E7 8000               2036          MOVEM.L d0,-(sp)
+00007AEC  48E7 4000               2037          MOVEM.L d1,-(sp)
+00007AF0  48E7 2000               2038          MOVEM.L d2,-(sp)
+00007AF4                          2039  
+00007AF4  2039 00007B34           2040          MOVE.L  RandomVal,d0
+00007AFA  72AF                    2041          MOVEQ   #$AF-$100,d1            ; = $AF
+00007AFC  7412                    2042          MOVEQ   #18,D2
+00007AFE                          2043          
+00007AFE                          2044  
+00007AFE                          2045  NINC0
+00007AFE  D080                    2046          ADD.L   D0,D0
+00007B00  6400 0004               2047          BCC     Ninc1
+00007B04  B300                    2048          EOR.B   D1,D0
+00007B06                          2049          
+00007B06                          2050  NINC1
+00007B06  51CA FFF6               2051          DBF     D2,Ninc0
+00007B0A                          2052  
+00007B0A  23C0 00007B34           2053          MOVE.L  D0,RandomVal
+00007B10  4286                    2054          CLR.L   D6
+00007B12  1C00                    2055          MOVE.B D0,D6
+00007B14                          2056  
+00007B14  4CDF 0004               2057          MOVEM.L (SP)+,D2
+00007B18  4CDF 0002               2058          MOVEM.L (SP)+,D1
+00007B1C  4CDF 0001               2059          MOVEM.L (SP)+,D0
+00007B20  4E75                    2060          RTS
+00007B22                          2061  
+00007B22                          2062  ASSIGN_SPAWN_TIMES
+00007B22  41F8 7550               2063      LEA CarSpawnTimes, A0
+00007B26  2248                    2064      MOVE.L A0, A1
+00007B28  5889                    2065      ADDA.L #4, A1      ;end of the first 3 cars
+00007B2A                          2066      
+00007B2A                          2067  ADD_RANDOM_TIME 
+00007B2A  DD58                    2068      ADD.W D6,(A0)+
+00007B2C  B3C8                    2069      CMPA.L A0, A1
+00007B2E  6EFA                    2070      BGT ADD_RANDOM_TIME
+00007B30  4E75                    2071      RTS
+00007B32                          2072      
+00007B32                          2073  
+00007B32                          2074  
+00007B32                          2075  
+00007B32                          2076  
+00007B32                          2077  paddingword3                ds.w 1
+00007B34                          2078  RandomVal                   ds.l 1
+00007B38                          2079  
+00007B38                          2080  
+00007B38                          2081  
+00007B38                          2082  
+00007B38                          2083  
+00007B38                          2084  
+00007B38                          2085  
+00007B38                          2086  
+00007B38                          2087  -------------------- end include --------------------
+00007B38                          2088      INCLUDE TimeManager.X68
+00007B38  =0000001C               2089  MAX_FRAME_TIME                  EQU     28      ;In centiseconds
+00007B38  =00000017               2090  DELAY_TIME_COMMAND              EQU     23
+00007B38                          2091  
+00007B38                          2092  
+00007B38                          2093  GET_DELTA_TIME_LOOP
+00007B38                          2094      *get delta time for one game loop
+00007B38  4281                    2095      CLR.L D1
+00007B3A  103C 0008               2096      MOVE.B #GET_TIME_COMMAND, D0
+00007B3E  4E4F                    2097      TRAP #15
+00007B40  41F9 00007BA6           2098      LEA CurrentTime,A0
+00007B46  43F9 00007BAE           2099      LEA DeltaTime, A1
+00007B4C  2E10                    2100      MOVE.L (A0),D7
+00007B4E  2081                    2101      MOVE.L D1,(A0)                  ;Update Current time
+00007B50  9287                    2102      SUB.L D7, D1                    ;Delta time
+00007B52  2281                    2103      MOVE.L D1,(A1)                  ;Set Delta Time
+00007B54  4E75                    2104      RTS
+00007B56                          2105  
+00007B56                          2106  GET_DELTA_TIME_TOTAL
+00007B56  4281                    2107      CLR.L D1
+00007B58                          2108      *get time overlapped since the start of the game
+00007B58  103C 0008               2109      MOVE.B #GET_TIME_COMMAND, D0    ;Get new time
+00007B5C  4E4F                    2110      TRAP #15
+00007B5E  41F9 00007BAA           2111      LEA StartTime,A0
+00007B64  2E10                    2112      MOVE.L (A0),D7
+00007B66  9287                    2113      SUB.L D7, D1                    ;Total Delta time (over whole game not game loop)
+00007B68  4E75                    2114      RTS
+00007B6A                          2115      
+00007B6A                          2116  
+00007B6A                          2117  CHECK_GAME_LOOP_DELAY
+00007B6A  41F9 00007BA6           2118      LEA CurrentTime, A0
+00007B70  4281                    2119      CLR.L D1
+00007B72  103C 0008               2120      MOVE.B #GET_TIME_COMMAND, D0
+00007B76  4E4F                    2121      TRAP #15
+00007B78  9290                    2122      SUB.L (A0),D1                   ;Time from the top of the loop
+00007B7A  741C                    2123      MOVE.L #MAX_FRAME_TIME, D2
+00007B7C  9481                    2124      SUB.L D1, D2
+00007B7E  6D00 950E               2125      BLT GAME_LOOP
+00007B82                          2126      
+00007B82  2202                    2127      MOVE.L D2,D1
+00007B84  7017                    2128      MOVE.L #DELAY_TIME_COMMAND, D0  ;IF time spent in loop is less than average, delay
+00007B86  4E4F                    2129      TRAP #15
+00007B88  6000 9504               2130      BRA GAME_LOOP
+00007B8C                          2131  
+00007B8C                          2132  
+00007B8C                          2133  GET_GAME_START_TIME
+00007B8C  41F9 00007BA6           2134      LEA CurrentTime, A0
+00007B92  43F9 00007BAA           2135      LEA StartTime, A1
+00007B98  103C 0008               2136      MOVE.B #GET_TIME_COMMAND, D0
+00007B9C  4E4F                    2137      TRAP #15
+00007B9E  2081                    2138      MOVE.L D1, (A0)  ;Gets the start time, THIS IS UPDATED IN CARMANAGER 
+00007BA0  2281                    2139      MOVE.L D1,(A1)
+00007BA2                          2140      
+00007BA2  4E75                    2141      RTS
+00007BA4                          2142  
+00007BA4                          2143  paddingword8                ds.w 1
+00007BA6                          2144  CurrentTime                 ds.l 1
+00007BAA                          2145  StartTime                   ds.l 1
+00007BAE                          2146  DeltaTime                   ds.l 1
+00007BB2= 00000000                2147  MaxDeltaTime                dc.l 0
+00007BB6                          2148  
+00007BB6                          2149  
+00007BB6                          2150  
+00007BB6                          2151  -------------------- end include --------------------
+00007BB6                          2152      INCLUDE InputManager.X68
+00007BB6  =00000026               2153  UP_KEY                  EQU  $26
+00007BB6  =00000028               2154  DOWN_KEY                EQU  $28
+00007BB6  =00000025               2155  LEFT_KEY                EQU  $25
+00007BB6  =00000027               2156  RIGHT_KEY               EQU  $27
+00007BB6                          2157  
+00007BB6                          2158  HANDLE_USER_INPUT
+00007BB6  7013                    2159      MOVE.L #KEY_INPUT_COMMAND, D0
+00007BB8  223C 26252728           2160      MOVE.L #UP_KEY<<24+LEFT_KEY<<16+RIGHT_KEY<<8+DOWN_KEY,D1   ;Puts UP,LEFT,RIGHT,DOWN into D1
+00007BBE  4E4F                    2161      TRAP #15   
+00007BC0  B2BC FF000000           2162      CMP.L #UP, D1                  ;Check for input
+00007BC6  6600 0006               2163      BNE CHECK_FOR_DOWN_INPUT
+00007BCA  4EB8 130E               2164      JSR MOVE_CAT_UP_CHECK
+00007BCE                          2165      
+00007BCE                          2166  CHECK_FOR_DOWN_INPUT
+00007BCE  B2BC 000000FF           2167      CMP.L #DOWN, D1
+00007BD4  6700 0004               2168      BEQ DOWN_INPUT_PRESENT
+00007BD8  4E75                    2169      RTS
+00007BDA                          2170  DOWN_INPUT_PRESENT
+00007BDA  4EB8 12A4               2171      JSR MOVE_CAT_DOWN_CHECK
+00007BDE                          2172      
+00007BDE  4E75                    2173      RTS
+00007BE0                          2174  
+00007BE0                          2175  
+00007BE0                          2176  
+00007BE0                          2177  -------------------- end include --------------------
+00007BE0                          2178      INCLUDE GameStatus.X68
+00007BE0  =00000024               2179  CAR_X_INDEX                     EQU     36 ;Used for resetting after pressing restart
+00007BE0  =0000002C               2180  CAR_X_SCREEN_INDEX              EQU     44      ;Used for resetting after pressing restart
+00007BE0  =00000002               2181  NUM_LIVES                       EQU     2
+00007BE0  =0000003D               2182  MOUSE_READ_COMMAND              EQU     61
+00007BE0                          2183  
+00007BE0                          2184  CHECK_RESTART
+00007BE0                          2185      
+00007BE0  703D                    2186      MOVE.L #MOUSE_READ_COMMAND, D0
+00007BE2  123C 0002               2187      MOVE.B #2, D1
+00007BE6  4E4F                    2188      TRAP #15
+00007BE8                          2189      
+00007BE8                          2190      
+00007BE8  B27C 0247               2191      CMP.W #RESTART_BUTTON_LEFT_X, D1
+00007BEC  6D00 FF7C               2192      BLT CHECK_GAME_LOOP_DELAY
+00007BF0                          2193      
+00007BF0  B27C 027E               2194      CMP.W #RESTART_BUTTON_RIGHT_X, D1
+00007BF4  6E00 FF74               2195      BGT CHECK_GAME_LOOP_DELAY
+00007BF8                          2196      
+00007BF8  4841                    2197      SWAP D1
+00007BFA  B27C 000A               2198      CMP.W #RESTART_BUTTON_TOP_Y, D1
+00007BFE  6D00 FF6A               2199      BLT CHECK_GAME_LOOP_DELAY
+00007C02                          2200      
+00007C02  B27C 0019               2201      CMP.W #RESTART_BUTTON_BOTTOM_Y, D1
+00007C06  6E00 FF62               2202      BGT CHECK_GAME_LOOP_DELAY
+00007C0A                          2203      
+00007C0A  4EB8 7066               2204      JSR LOADING_SCREEN_POST_START
+00007C0E  4280                    2205      CLR.L D0
+00007C10  4281                    2206      CLR.L D1
+00007C12  4282                    2207      CLR.L D2
+00007C14                          2208      
+00007C14  4EB8 7768               2209      JSR COPY_BUFFER
+00007C18                          2210       
+00007C18  7200                    2211      MOVE.L #0, D1                       ;reference to background music
+00007C1A  704D                    2212      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007C1C  7402                    2213      MOVE.L #2, D2                       ;Stop sound
+00007C1E  4E4F                    2214      TRAP #15
+00007C20                          2215      
+00007C20  4EB8 712E               2216      JSR PRINT_TOM
+00007C24                          2217      
+00007C24  4EB9 00007C80           2218      JSR RESET_VARIABLES
+00007C2A                          2219      
+00007C2A  6000 93D4               2220      BRA START
+00007C2E                          2221  
+00007C2E                          2222  
+00007C2E                          2223  CHECK_RESTART_AFTER_WIN_LOSE
+00007C2E  703D                    2224      MOVE.L #MOUSE_READ_COMMAND, D0
+00007C30  123C 0000               2225      MOVE.B #0, D1
+00007C34  4E4F                    2226      TRAP #15
+00007C36                          2227      
+00007C36  B07C 0001               2228      CMP #1, D0
+00007C3A  66F2                    2229      BNE CHECK_RESTART_AFTER_WIN_LOSE
+00007C3C                          2230      
+00007C3C  B27C 0247               2231      CMP.W #RESTART_BUTTON_LEFT_X, D1
+00007C40  6DEC                    2232      BLT CHECK_RESTART_AFTER_WIN_LOSE
+00007C42                          2233      
+00007C42  B27C 027E               2234      CMP.W #RESTART_BUTTON_RIGHT_X, D1
+00007C46  6EE6                    2235      BGT CHECK_RESTART_AFTER_WIN_LOSE
+00007C48                          2236      
+00007C48  4841                    2237      SWAP D1
+00007C4A  B27C 000A               2238      CMP.W #RESTART_BUTTON_TOP_Y, D1
+00007C4E  6DDE                    2239      BLT CHECK_RESTART_AFTER_WIN_LOSE
+00007C50                          2240      
+00007C50  B27C 0019               2241      CMP.W #RESTART_BUTTON_BOTTOM_Y, D1
+00007C54  6ED8                    2242      BGT CHECK_RESTART_AFTER_WIN_LOSE
+00007C56                          2243      
+00007C56  4EB8 7066               2244      JSR LOADING_SCREEN_POST_START
+00007C5A  4280                    2245      CLR.L D0
+00007C5C  4281                    2246      CLR.L D1
+00007C5E  4282                    2247      CLR.L D2
+00007C60                          2248      
+00007C60                          2249      *copies buffer
+00007C60  103C 005E               2250      MOVE.B  #94,D0
+00007C64  4E4F                    2251      TRAP    #15
+00007C66                          2252      
+00007C66  4EB8 712E               2253       JSR PRINT_TOM
+00007C6A                          2254       
+00007C6A                          2255       *copies buffer
+00007C6A  103C 005E               2256       MOVE.B  #94,D0
+00007C6E  4E4F                    2257       TRAP    #15
+00007C70                          2258       
+00007C70  7200                    2259      MOVE.L #0, D1                       ;reference to background music
+00007C72  704D                    2260      MOVE.L #PLAY_SOUND_COMMAND,D0
+00007C74  7402                    2261      MOVE.L #2, D2                       ;Stop sound
+00007C76  4E4F                    2262      TRAP #15
+00007C78                          2263      
+00007C78  4EB9 00007C80           2264      JSR RESET_VARIABLES
+00007C7E                          2265      
+00007C7E  4E75                    2266      RTS
+00007C80                          2267      
+00007C80                          2268  RESET_VARIABLES
+00007C80  41F8 754E               2269      LEA LivesLeft,A0
+00007C84  30BC 0002               2270      MOVE.W #NUM_LIVES,(A0)
+00007C88                          2271      
+00007C88  41F8 6FAE               2272      LEA JumpingCatState,A0
+00007C8C  30BC 0001               2273      MOVE.W #1,(A0)
+00007C90                          2274      
+00007C90  41F9 0028FB10           2275      LEA JumpingCatVelocity,A0
+00007C96  30BC 0000               2276      MOVE.W #0,(A0)
+00007C9A                          2277      
+00007C9A  41F8 6FAC               2278      LEA CatState,A0
+00007C9E  30BC 0001               2279      MOVE.W #1,(A0)
+00007CA2                          2280      
+00007CA2  41F9 0028FB0C           2281      LEA CarXIndex,A0
+00007CA8  30BC 0024               2282      MOVE.W #CAR_X_INDEX,(A0)
+00007CAC                          2283      
+00007CAC  41F9 0028FB0E           2284      LEA CarXScreenIndex,A0
+00007CB2  30BC 002C               2285      MOVE.W #CAR_X_SCREEN_INDEX,(A0)
+00007CB6                          2286      
+00007CB6                          2287      ;Reset the spawn times of the two cars after the first one
+00007CB6  41F8 7550               2288      LEA CarSpawnTimes, A0
+00007CBA  43F9 00007D48           2289      LEA CarSpawnTimesReset,A1
+00007CC0  30D9                    2290      MOVE.W (A1)+,(A0)+
+00007CC2  30D9                    2291      MOVE.W (A1)+,(A0)+    
+00007CC4  30D9                    2292      MOVE.W (A1)+,(A0)+
+00007CC6  30D9                    2293      MOVE.W (A1)+,(A0)+
+00007CC8                          2294      
+00007CC8  41F8 6FB0               2295      LEA JumpingCat, A0
+00007CCC  43F9 00007D50           2296      LEA JumpingCatReset,A1
+00007CD2  30D9                    2297      MOVE.W (A1)+,(A0)+
+00007CD4  30D9                    2298      MOVE.W (A1)+,(A0)+
+00007CD6  30D9                    2299      MOVE.W (A1)+,(A0)+
+00007CD8  3091                    2300      MOVE.W (A1),(A0)
+00007CDA                          2301      
+00007CDA  43F9 0028FB12           2302      LEA SpritePositioning,A1
+00007CE0  45F9 00007D58           2303      LEA SpritePositioningReset,A2
+00007CE6                          2304     
+00007CE6                          2305  RESET_PIXIES    
+00007CE6  32DA                    2306      MOVE.W (A2)+,(A1)+
+00007CE8  0C52 FFFF               2307      CMP.W #$FFFF,(A2) ;A2 is the last variable declared, so anything after it should be untouched, or equivalent to FFFF
+00007CEC  66F8                    2308      BNE RESET_PIXIES 
+00007CEE  4E75                    2309      RTS
+00007CF0                          2310  
+00007CF0                          2311  START_SCREEN_LOOP
+00007CF0  703D                    2312      MOVE.L #MOUSE_READ_COMMAND,D0
+00007CF2  123C 0000               2313      MOVE.B #0, D1
+00007CF6  4E4F                    2314      TRAP #15
+00007CF8                          2315      
+00007CF8  B07C 0001               2316      CMP #1,D0
+00007CFC  66F2                    2317      BNE START_SCREEN_LOOP
+00007CFE                          2318      
+00007CFE  B27C 010E               2319      CMP.W #START_BUTTON_OUTER_LEFT_X,D1
+00007D02  6DEC                    2320      BLT START_SCREEN_LOOP
+00007D04                          2321      
+00007D04  B27C 0172               2322      CMP.W #START_BUTTON_OUTER_RIGHT_X,D1
+00007D08  6EE6                    2323      BGT START_SCREEN_LOOP
+00007D0A                          2324      
+00007D0A  4841                    2325      SWAP D1
+00007D0C  B27C 010E               2326      CMP.W #START_BUTTON_OUTER_TOP_Y,D1
+00007D10  6DDE                    2327      BLT START_SCREEN_LOOP
+00007D12                          2328      
+00007D12  B27C 012C               2329      CMP.W #START_BUTTON_OUTER_BOTTOM_Y,D1
+00007D16  6ED8                    2330      BGT START_SCREEN_LOOP
+00007D18                          2331      
+00007D18  4E75                    2332      RTS
+00007D1A                          2333      
+00007D1A                          2334  CHECK_ARE_YOU_SURE
+00007D1A  703D                    2335      MOVE.L #MOUSE_READ_COMMAND,D0
+00007D1C  123C 0000               2336      MOVE.B #0, D1
+00007D20  4E4F                    2337      TRAP #15
+00007D22                          2338      
+00007D22  B07C 0001               2339      CMP #1, D0
+00007D26  66F2                    2340      BNE CHECK_ARE_YOU_SURE
+00007D28                          2341      
+00007D28  B27C 010E               2342      CMP.W #START_BUTTON_OUTER_LEFT_X,D1
+00007D2C  6DEC                    2343      BLT CHECK_ARE_YOU_SURE
+00007D2E                          2344      
+00007D2E  B27C 017C               2345      CMP.W #ARE_YOU_SURE_OUTER_RIGHT_X,D1
+00007D32  6EE6                    2346      BGT CHECK_ARE_YOU_SURE
+00007D34                          2347      
+00007D34  4841                    2348      SWAP D1
+00007D36  B27C 0159               2349      CMP.W #(START_BUTTON_OUTER_TOP_Y+75),D1
+00007D3A  6DDE                    2350      BLT CHECK_ARE_YOU_SURE
+00007D3C                          2351      
+00007D3C  B27C 0177               2352      CMP.W #(START_BUTTON_OUTER_BOTTOM_Y+75),D1
+00007D40  6ED8                    2353      BGT CHECK_ARE_YOU_SURE
+00007D42                          2354      
+00007D42  4281                    2355      CLR.L D1
+00007D44                          2356      
+00007D44  4E75                    2357      RTS
+00007D46                          2358      
+00007D46                          2359  paddingword4                ds.w 1
+00007D48                          2360  
+00007D48                          2361  ;used for resetting variables after restart button is pressed
+00007D48                          2362  CarSpawnTimesReset
+00007D48= 01F4 0320 0352 047E     2363      dc.w 500,800,    850,1150     
+00007D50                          2364       
+00007D50                          2365  JumpingCatReset
+00007D50= 00A5 015E 0032 011D     2366      dc.w 165,350,50,285
+00007D58                          2367      
+00007D58                          2368  SpritePositioningReset
+00007D58= 0000 0000 0038 0...     2369      dc.w 0,0,56,51,145,220,30,155,0,    0,0,411,350,115,65,0,0,0,     0,0,75,46,526,220,411,155,0,1,     0,0,75,46,526,310,411,245,0,0
+00007DA4                          2370  
+00007DA4                          2371  
+00007DA4                          2372  
+00007DA4                          2373  
+00007DA4                          2374  
+00007DA4                          2375  
+00007DA4                          2376  
+00007DA4                          2377  
+00007DA4                          2378  
+00007DA4                          2379  
+00007DA4                          2380  
+00007DA4                          2381  -------------------- end include --------------------
+00007DA4                          2382      
+00007DA4                          2383      
+00007DA4                          2384      
+00007DA4                          2385      
+00007DA4                          2386  *Bitmaps    
+00007DA4                          2387  GameBackground              INCBIN "Game_background.bmp"
+0009612E                          2388  GreenPickupTruck            INCBIN "GreenPickupTruck75.bmp"
+0009974C                          2389  CatCollision                INCBIN "Shock.bmp"
+0009C422                          2390  StartScreen                 INCBIN "start_screen.bmp"
+00128C00                          2391  WinScreen                   INCBIN "win-screen.bmp"
+001B53DE                          2392  LoseScreen                  INCBIN "lose-screen.bmp"
+00241BBC                          2393  JumpingFrame1               INCBIN "Jump_1.bmp"
+00244892                          2394  JumpingFrame3               INCBIN "Jump_3.bmp"
+00247568                          2395  JumpingFrame4               INCBIN "Jump_4.bmp"
+0024A23E                          2396  JumpingFrame5               INCBIN "Jump_5.bmp"
+0024CF14                          2397  JumpingFrame7               INCBIN "Jump_7.bmp"
+0024FBEA                          2398  NotATomPhoto                INCBIN "NotSuspicious.bmp"
+0028FAC8                          2399  
+0028FAC8                          2400  
+0028FAC8                          2401  *Error Messages
+0028FAC8= 42 4D                   2402  FileSignature               dc.b    'BM'
+0028FACA= 49 6E 63 6F 72 72 ...   2403  ErrorMessage_WrongSignature dc.b 'Incorrect File Signature', 0
+0028FAE3= 49 6E 63 6F 72 72 ...   2404  ErrorMessage_WrongFileSize  dc.b 'Incorrect Number of Bits per Pixel', 0
+0028FB06                          2405  
+0028FB06                          2406  padding                     ds.w 1
+0028FB08= 0000157C                2407  WinTime                     dc.l 5500
+0028FB0C= 0024                    2408  CarXIndex                   dc.w 36
+0028FB0E= 002C                    2409  CarXScreenIndex             dc.w 44
+0028FB10                          2410  
+0028FB10= 0000                    2411  JumpingCatVelocity          dc.w 0      ;Starts off not moving
+0028FB12                          2412  
+0028FB12                          2413  *-----------------------------------------------------------
+0028FB12                          2414  *     A B C D E F G
+0028FB12                          2415  *0: 0 1 1 1 1 1 1 0 -> 7E
+0028FB12                          2416  *1: 0 0 1 1 0 0 0 0 -> 30
+0028FB12                          2417  *2: 0 1 1 0 1 1 0 1 -> 6D
+0028FB12                          2418  *3: 0 1 1 1 1 0 0 1 -> 79
+0028FB12                          2419  *4: 0 0 1 1 0 0 1 1 -> 33
+0028FB12                          2420  *5: 0 1 0 1 1 0 1 1 -> 5B
+0028FB12                          2421  *6: 0 1 0 1 1 1 1 1 -> 5F
+0028FB12                          2422  *7: 0 1 1 1 0 0 0 0 -> 70
+0028FB12                          2423  *8: 0 1 1 1 1 1 1 1 -> 7F
+0028FB12                          2424  *9: 0 1 1 1 1 0 1 1 -> 7B
+0028FB12                          2425  *-----------------------------------------------------------
+0028FB12                          2426       
+0028FB12                          2427  SpritePositioning 
+0028FB12                          2428      *cat x, y, width, height, screen x, screen y, BACKGROUND CHUNK X, BACKGROUND CHUNK Y, overlap     
+0028FB12                          2429      *background x, y, width, height, screen x, screen y, color offset, color padding, T/F file been read 
+0028FB12                          2430      *car1 x, y, width, height, screen x, screen y, Background chunk x, Background chunk y, CAT_CAR_OVERLAP, MOVING
+0028FB12                          2431      *car2 x, y, width, height, screen x, screen y, Background chunk x, Background chunk y, CAT_CAR_OVERLAP, MOVING
+0028FB12= 0000 0000 0038 0...     2432      dc.w 0,0,56,51,145,220,30,155,0,    0,0,411,350,115,65,0,0,0,     0,0,75,46,526,220,411,155,0,1,     0,0,75,46,526,310,411,245,0,0
+0028FB5E                          2433  
+0028FB5E                          2434      
+0028FB5E                          2435      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ADD_RANDOM_TIME     7B2A
+ALL_REG             7FFF
+AREYOUSURETEXT      781C
+ARE_YOU_SURE_INNER_RIGHT_X  179
+ARE_YOU_SURE_OUTER_RIGHT_X  17C
+ASSIGN_SPAWN_TIMES  7B22
+A_X1                185
+A_X2                18B
+A_Y1                25
+BACKGROUNDMUSIC     797A
+BACKGROUND_START    6FB8
+BACKGROUND_X_INDEX  12
+BITMAP_END_X        19B
+BITMAP_END_Y        19F
+BITMAP_START_Y      41
+BLACK               0
+BORDER_COLOR        D4A665
+BOTTOM_BORDER_TOP_Y  19F
+CARHEADERSTATE      757C
+CARSPAWNTIMES       7550
+CARSPAWNTIMESRESET  7D48
+CARXINDEX           28FB0C
+CARXSCREENINDEX     28FB0E
+CAR_AND_CAT_DONT_OVERLAP  13D4
+CAR_AND_CAT_STILL_OVERLAP  1472
+CAR_HEIGHT          2E
+CAR_NOT_MOVING      71F8
+CAR_NOT_OFF_SCREEN  737E
+CAR_OFF_SCREEN_FULLY  29
+CAR_PARTIALLY_ON_SCREEN_LEFT  7340
+CAR_PARTIALLY_ON_SCREEN_RIGHT  7326
+CAR_START_X         0
+CAR_WIDTH           4B
+CAR_X_INDEX         24
+CAR_X_SCREEN_INDEX  2C
+CATCOLLISION        9974C
+CATRUNNINGFRAME1    1600
+CATRUNNINGFRAME2    42D6
+CATSCREAM           7992
+CATSTATE            6FAC
+CAT_BOTTOM_LANE_MAX  135
+CAT_HEIGHT          33
+CAT_SCREAM          7922
+CAT_TOP_LANE_MAX    DD
+CAT_WIDTH           38
+CAT_X_BITMAP_INDEX  C
+CAT_Y_SCREEN_INDEX  A
+CHANGE_LANE_AMOUNT  5A
+CHANGE_WIDTH_BACK   751A
+CHECK_ARE_YOU_SURE  7D1A
+CHECK_FOR_DOWN_INPUT  7BCE
+CHECK_GAME_LOOP_DELAY  7B6A
+CHECK_RESTART       7BE0
+CHECK_RESTART_AFTER_WIN_LOSE  7C2E
+CHECK_TIME_2_CAR_10  7504
+CHECK_TIME_2_CAR_11  7512
+CHECK_TIME_2_CAR_2  749E
+CHECK_TIME_2_CAR_3  74AA
+CHECK_TIME_2_CAR_4  74B6
+CHECK_TIME_2_CAR_5  74C2
+CHECK_TIME_2_CAR_6  74CE
+CHECK_TIME_2_CAR_7  74DC
+CHECK_TIME_2_CAR_8  74E8
+CHECK_TIME_2_CAR_9  74F6
+CHECK_WIDTH_0       730E
+CHUNK_HEIGHT_INDEX  E
+CHUNK_WIDTH_INDEX   10
+CLEAR_DIRECTIONS    76D2
+COLLISION_X_AXIS    73E8
+COLLISION_Y_AXIS    73F4
+COLLISION_Y_SHIFT_AMOUNT  2E
+COLORS              757E
+CONVERT_LONG_LE_TO_BE  11DA
+COPY_BUFFER         7768
+COPY_DOUBLE_BUFFER  5E
+CURRENTTIME         7BA6
+DECREASE_CAR_POINTER  7520
+DELAY_TIME_COMMAND  17
+DELTATIME           7BAE
+DIRECTIONSBOTTOM    785C
+DIRECTIONSTOP       7830
+DIRECTIONS_BOTTOM_SCREEN_X  A
+DIRECTIONS_BOTTOM_SCREEN_Y  1B2
+DIRECTIONS_TOP_SCREEN_X  A9
+DIRECTIONS_TOP_SCREEN_Y  19
+DISPLAY_LOADING     7770
+DISPLAY_STRING_COMMAND  E
+DISTANCE_BTWN_CAR_POINTERS  14
+DOWN                FF
+DOWN_CHECK_PASSED   12F2
+DOWN_INPUT_PRESENT  7BDA
+DOWN_KEY            28
+DRAW_BORDER         757E
+DRAW_CAR            72A8
+DRAW_CAT            127A
+DRAW_CHUNK_THIRTY_TWO  11E2
+DRAW_FILLED_RECTANGLE_COMMAND  57
+DRAW_JUMPING_CAT    1588
+DRAW_LINE_COMMAND   54
+DRAW_PIXEL_COMMAND  52
+DRAW_TEXT_COMMAND   5F
+D_Y2                2F
+END_GAME            7014
+ENTER_GAME          102A
+ERRORMESSAGE_WRONGFILESIZE  28FAE3
+ERRORMESSAGE_WRONGSIGNATURE  28FACA
+FILESIGNATURE       28FAC8
+FULLCARWIDTHCALCULATIONS  11A6
+GAMEBACKGROUND      7DA4
+GAMEOVER            79BE
+GAMEPLAYDIRECTIONS  78B0
+GAMEWIN             79AA
+GAME_LOOP           108E
+GET_COLOR           122A
+GET_DELTA_TIME_LOOP  7B38
+GET_DELTA_TIME_TOTAL  7B56
+GET_GAME_START_TIME  7B8C
+GET_RANDOM_BYTE_INTO_D6  7AE8
+GET_RANDOM_NUM      7AB2
+GET_TIME_COMMAND    8
+GREENPICKUPTRUCK    9612E
+GREEN_SKIP_COLOR    FF3B
+HANDLE_USER_INPUT   7BB6
+HEADER_REG          5FF3
+HIT_BOTTOM_Y        164
+HIT_TOP_Y           10A
+HORIZONTAL_SHIFT    14E8
+INCREASE_A0         7A46
+INCREASE_CAR_POINTER  7536
+INCREASE_JUMPING_CAT_X_Y  1558
+INCREASE_JUMP_CAT_X_DECREASE_Y  1576
+INCREASE_JUMP_CAT_X_NO_CHANGE_Y  156A
+INNER_BUTTON_PEN_COLOR  9F9FAA
+JUMPINGCAT          6FB0
+JUMPINGCATRESET     7D50
+JUMPINGCATSTATE     6FAE
+JUMPINGCATVELOCITY  28FB10
+JUMPINGFRAME1       241BBC
+JUMPINGFRAME3       244892
+JUMPINGFRAME4       247568
+JUMPINGFRAME5       24A23E
+JUMPINGFRAME7       24CF14
+JUMPING_CAT_2       14B2
+JUMPING_CAT_3       14C4
+JUMPING_CAT_4       14D6
+JUMPING_CAT_5       151E
+JUMPING_CAT_6       1530
+JUMPING_CAT_7       1542
+JUMPING_CAT_ACCELERATION  2
+JUMPING_CAT_FINAL_POSITION  7D
+JUMPING_CAT_START_SCREEN  1474
+JUMPING_CAT_X       0
+JUMPING_CAT_Y       0
+KEY_INPUT_COMMAND   13
+LEFT_BORDER_BOTTOM_Y  1E0
+LEFT_BORDER_LEFT_X  0
+LEFT_BORDER_RIGHT_X  74
+LEFT_KEY            25
+LETSGO              79D2
+LETS_GO_SOUND       7964
+LIVESLEFT           754E
+LIVESTEXT           780C
+LIVES_TEXT_X        113
+LIVES_TEXT_Y        1E
+LOADINGTEXT         77F4
+LOADING_SCREEN_POST_START  7066
+LOADING_TEXT_X      118
+LOAD_SOUND_COMMAND  4A
+LOAD_SS             79E2
+LOSESCREEN          1B53DE
+LOSE_SCREEN         7002
+LOSE_SOUND          794E
+LOWER_LANE_Y        136
+LOWER_LANE_Y_SHOCK  164
+MAXDELTATIME        7BB2
+MAX_FRAME_TIME      1C
+MOUSE_READ_COMMAND  3D
+MOVE_CAT_DOWN_CHECK  12A4
+MOVE_CAT_TO_0       1434
+MOVE_CAT_TO_1       141E
+MOVE_CAT_TO_2       144A
+MOVE_CAT_UP_CHECK   130E
+NINC0               7AFE
+NINC1               7B06
+NOTATOMPHOTO        24FBEA
+NOT_IN_BOTTOM_LANE  12BC
+NOT_IN_TOP_LANE     1326
+NO_POST_COLLISION_SHIFT  1408
+NO_RESTORE          731A
+NUM_LIVES           2
+OKAYTEXT            718C
+OKAY_SCREEN         70CA
+OUTER_BUTTON_FILL_COLOR  D9D9D9
+OUTER_BUTTON_PEN_COLOR  6F6F73
+PADDING             28FB06
+PADDINGWORD         7A50
+PADDINGWORD1        754C
+PADDINGWORD10       11A4
+PADDINGWORD3        7B32
+PADDINGWORD4        7D46
+PADDINGWORD8        7BA4
+PADDINGWORD9        77E6
+PLAY_BACKGROUND_MUSIC  7904
+PLAY_SOUND_COMMAND  4D
+POST_COLLISION_SHIFT_UP  13F4
+PRINT_ARE_YOU_SURE  777C
+PRINT_GAMEPLAY_TIPS  7732
+PRINT_LIVES_TEXT    7712
+PRINT_SEGMENT       7A28
+PRINT_STRING_CR_LF  D
+PRINT_TOM           712E
+RANDOMVAL           7B34
+READ_THROUGH_HEADER  10F0
+REDRAW_BACKGROUND_CAT  123E
+REDRAW_CAR_BACKGROUND  7198
+REDRAW_CAR_BACKGROUND_LAST  73A8
+REDRAW_CAT_JUMPING  15B6
+RESET_PIXIES        7CE6
+RESET_VARIABLES     7C80
+RESTARTIMAGEDIMENSIONS  7180
+RESTARTTEXT         7800
+RESTART_BUTTON_BOTTOM_Y  19
+RESTART_BUTTON_LEFT_X  247
+RESTART_BUTTON_RIGHT_X  27E
+RESTART_BUTTON_TEXT_X  23F
+RESTART_BUTTON_TEXT_Y  A
+RESTART_BUTTON_TOP_Y  A
+RIGHT_BORDER_LEFT_X  20D
+RIGHT_KEY           27
+SCREEN_END_X        20E
+SCREEN_START_X      73
+SEED_RANDOM_NUM     7AD0
+SET_BUFFER          7760
+SET_CAR_LOWER_TO_MOVING  746C
+SET_CAR_UPPER_TO_MOVING  7438
+SET_COLOR_AND_DRAW  120C
+SET_DOUBLE_BUFFER   5C
+SET_FILL_COLOR_COMMAND  51
+SET_FONT_COMMAND    15
+SET_PEN_COLOR_COMMAND  50
+SET_PEN_WIDTH_COMMAND  5D
+SEVENSEGMENT        7A52
+SEVENSEGMENTDIMENSIONS  7A7A
+SHIFT_OUT_DECIMALS  2
+SKIP_COLOR          1224
+SKIP_STORE_HEADER   118E
+SPAWN_CARS          7490
+SPRITEPOSITIONING   28FB12
+SPRITEPOSITIONINGRESET  7D58
+START               1000
+STARTSCREEN         9C422
+STARTTEXT           77E8
+STARTTIME           7BAA
+START_BOX_LINE_WIDTH  2
+START_BUTTON_INNER_BOTTOM_Y  12A
+START_BUTTON_INNER_LEFT_X  111
+START_BUTTON_INNER_RIGHT_X  16F
+START_BUTTON_INNER_TOP_Y  111
+START_BUTTON_OUTER_BOTTOM_Y  12C
+START_BUTTON_OUTER_LEFT_X  10E
+START_BUTTON_OUTER_RIGHT_X  172
+START_BUTTON_OUTER_TOP_Y  10E
+START_BUTTON_TEXT_X  125
+START_BUTTON_TEXT_Y  112
+START_SCREEN_LOOP   7CF0
+STOP_BACKGROUND_MUSIC  7918
+THIRTHY_TWO_BITS    20
+THIRTY_TWO_BIT_BITMAP  1232
+TOP_BORDER_BOTTOM_Y  42
+TOP_BORDER_RIGHT_X  2A8
+TOP_LEFT_X_BITMAP_CHUNK  0
+TOP_LEFT_X_BITMAP_CHUNK_INDEX  12
+TOP_LEFT_X_SCREEN_INDEX  A
+TOP_LEFT_Y_BITMAP_CHUNK  0
+TOP_LEFT_Y_BITMAP_CHUNK_INDEX  C
+TOP_LEFT_Y_SCREEN_INDEX  8
+UP                  FF000000
+UPDATE              1094
+UPDATE_CAR          71D6
+UPDATE_CAR_POSITION  7230
+UPDATE_CAT          1374
+UP_CHECK_PASSED     1358
+UP_KEY              26
+VELOCITY            3
+WHITE               FFFFFF
+WINSCREEN           128C00
+WINTIME             28FB08
+WIN_SCREEN          6FEC
+WIN_SOUND           7938
+WRONG_SIGNATURE     10E2
