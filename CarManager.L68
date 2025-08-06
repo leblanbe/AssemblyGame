@@ -1,0 +1,580 @@
+00000000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 6/23/2025 3:11:43 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :Car Manager
+00000000                             3  * Written by : Brynn LeBlanc
+00000000                             4  * Date       : 6/2/2025
+00000000                             5  * Description: Handles the movement, rendering, and collision detection of cars in the game. 
+00000000                             6  ;                Cars move from right to left across the screen, and their position is updated 
+00000000                             7  ;                based on a time-based velocity system. If a car and the cat overlap on both the
+00000000                             8  ;                x- and y-axes, a collision occurs—reducing the cat’s lives and triggering a 
+00000000                             9  ;                reaction animation. The program ensures that only visible portions of cars are drawn,
+00000000                            10  ;                and cars are reset or stopped once fully offscreen. It also prevents repeated life
+00000000                            11  ;                loss from a single collision by tracking overlapping states. 
+00000000                            12  *-----------------------------------------------------------
+00000000  =00000029                 13  CAR_OFF_SCREEN_FULLY            EQU     41
+00000000  =0000019B                 14  BITMAP_END_X                    EQU     411
+00000000  =0000004B                 15  CAR_WIDTH                       EQU     75 
+00000000  =0000002E                 16  CAR_HEIGHT                      EQU     46
+00000000  =00000000                 17  CAR_START_X                     EQU     0
+00000000  =00000073                 18  SCREEN_START_X                  EQU     115
+00000000  =00000003                 19  VELOCITY                        EQU     $0003   ;75 pixels per second
+00000000  =00000002                 20  SHIFT_OUT_DECIMALS              EQU     2
+00000000  =0000020E                 21  SCREEN_END_X                    EQU     526
+00000000                            22  
+00000000                            23  REDRAW_CAR_BACKGROUND
+Line 24 ERROR: Undefined symbol
+00000000  41F9 004DBD16             24      LEA GameBackground, A0
+00000006                            25  
+00000006  2448                      26      MOVE.L A0,A2                             
+00000008  3018                      27      MOVE.W (A0)+, D0            ;Get header
+0000000A                            28      
+Line 29 ERROR: Undefined symbol
+0000000A  49F9 004DBD16             29      LEA SpritePositioning, A4
+Line 30 ERROR: Undefined symbol
+00000010  47F9 004DBD16             30      LEA CarXScreenIndex, A3
+00000016  4287                      31      CLR.L D7
+00000018  3E13                      32      MOVE.W (A3),D7
+0000001A  5887                      33      ADDI.L #4, D7
+0000001C  D9C7                      34      ADDA.L D7, A4
+0000001E  3F14                      35      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000020  518C                      36      SUBA.L #8, A4
+00000022  3F1C                      37      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+00000024  3F14                      38      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+00000026  508C                      39      ADDA.L #8, A4
+00000028  3F14                      40      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+0000002A  5D8C                      41      SUBA.L #6, A4
+0000002C  3F1C                      42      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+0000002E  3F14                      43      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000030  2F08                      44      MOVE.L A0,-(SP)
+00000032                            45          
+Line 46 ERROR: Undefined symbol
+00000032  4EB9 004DBD16             46      JSR    READ_THROUGH_HEADER
+00000038  DFFC 00000010             47      ADDA.L #16, A7
+0000003E                            48     
+0000003E  4E75                      49      RTS   
+00000040                            50       
+00000040                            51  CHECK_WIDTH_0
+00000040  0C54 004B                 52      CMPI.W #CAR_WIDTH,(A4)      ;See if we are reading the bitmap for the full width car
+00000044  6600 0006                 53      BNE NO_RESTORE
+00000048  32BC 0001                 54      MOVE.W #1,(A1)              ;If we are reading full width car for the first time, set state to 1, so we know to store header calculations info
+0000004C                            55  
+0000004C                            56  NO_RESTORE    
+Line 57 ERROR: Undefined symbol
+0000004C  4EB9 004DBD16             57      JSR    READ_THROUGH_HEADER
+00000052  DFFC 00000010             58      ADDA.L #16, A7              ;Reset Stack
+00000058  4E75                      59      RTS
+0000005A                            60  
+0000005A                            61  UPDATE_CAR
+0000005A                            62      *handles the background redraw of the car
+Line 63 ERROR: Undefined symbol
+0000005A  49F9 004DBD16             63      LEA SpritePositioning,A4
+00000060                            64      
+Line 65 ERROR: Undefined symbol
+00000060  47F9 004DBD16             65      LEA CarXScreenIndex, A3
+00000066  4287                      66      CLR.L D7
+00000068  3E13                      67      MOVE.W (A3),D7
+0000006A  D9C7                      68      ADDA.L D7, A4
+0000006C                            69      
+0000006C  D9FC 0000000A             70      ADDA.L #10,A4                 ;get car moving boolean
+00000072  0C54 0000                 71      CMP.W #0,(A4)
+00000076  6700 030A                 72      BEQ RETURN                    ;return if car is not moving
+0000007A  99FC 0000000A             73      SUBA.L #10,A4
+00000080                            74      
+00000080  0C54 0073                 75      CMPI.W #SCREEN_START_X, (A4)  ;redraw background if car is partially on screen
+00000084  6700 018C                 76      BEQ REDRAW_CAR_BACKGROUND_LAST
+00000088                            77      
+00000088  588C                      78      ADDA.L #4,A4
+0000008A                            79      
+0000008A  0C54 019B                 80      CMPI.W #BITMAP_END_X,(A4)
+0000008E  6700 0022                 81      BEQ UPDATE_CAR_POSITION       ;Don't redraw background if object is not on screen
+00000092                            82  
+00000092  4EB8 0000                 83      JSR REDRAW_CAR_BACKGROUND
+00000096                            84      
+Line 85 ERROR: Undefined symbol
+00000096  49F9 004DBD16             85      LEA SpritePositioning,A4
+0000009C                            86      
+Line 87 ERROR: Undefined symbol
+0000009C  47F9 004DBD16             87      LEA CarXIndex, A3
+000000A2  3E13                      88      MOVE.W (A3),D7
+000000A4                            89      
+000000A4  D9C7                      90      ADDA.L D7, A4               ;Gets Car X position
+000000A6  588C                      91      ADDA.L #4, A4               ;CAR WIDTH                       
+000000A8  0C54 004B                 92      CMPI.W #CAR_WIDTH,(A4)      ;COMPARE CHUNK WIDTH WITH ORIGINAL WIDTH OF CAR TO SEE IF CAR WIDTH WAS CHANGED TO PARTIAL          
+000000AC  4EB9 0000037C             93      JSR CHANGE_WIDTH_BACK
+000000B2                            94  
+000000B2                            95  UPDATE_CAR_POSITION
+Line 96 ERROR: Undefined symbol
+000000B2  41F9 004DBD16             96      LEA DeltaTime,A0
+000000B8  2210                      97      MOVE.L (A0),D1
+000000BA                            98      
+000000BA                            99      *Calculate pixels
+000000BA  C2FC 0003                100      MULU #VELOCITY, D1
+000000BE                           101      
+000000BE                           102      *update position based on velocity      
+Line 103 ERROR: Undefined symbol
+000000BE  49F9 004DBD16            103      LEA SpritePositioning,A4
+000000C4  4287                     104      CLR.L D7
+Line 105 ERROR: Undefined symbol
+000000C6  47F9 004DBD16            105      LEA CarXScreenIndex, A3
+000000CC  3E13                     106      MOVE.W (A3),D7
+000000CE  D9C7                     107      ADDA.L D7, A4                       ;Gets Car X position ON SCREEN
+000000D0  E449                     108      LSR #SHIFT_OUT_DECIMALS, D1         ;Shift out decimals
+000000D2  588C                     109      ADDA.L #4, A4                       ;Background chunk screen x
+000000D4  9354                     110      SUB.W D1,(A4)                       ;moves background redraw position
+000000D6  598C                     111      SUBA.L #4, A4                       ;Gets Car X position on screen
+000000D8  9354                     112      SUB.W D1,(A4)                       ;Pixels MINUS current position (MOVING LEFT), y doesn't change
+000000DA                           113  
+000000DA                           114      *CHECKS IF CAR IS FULLY OFF SCREEN
+000000DA  0C54 0029                115      CMPI.W #CAR_OFF_SCREEN_FULLY,(A4)
+000000DE  6D00 0132                116      BLT REDRAW_CAR_BACKGROUND_LAST
+000000E2                           117      
+000000E2                           118      *Check if car is partially on screen (TO THE LEFT)
+000000E2  3E14                     119      MOVE.W (A4),D7                      ;New left X position
+000000E4  3407                     120      MOVE.W D7, D2
+000000E6  0C54 0073                121      CMPI.W #SCREEN_START_X,(A4)
+000000EA  6D00 00BC                122      BLT CAR_PARTIALLY_ON_SCREEN_LEFT
+000000EE                           123  
+000000EE                           124      *Check if car is partially on screen (TO THE RIGHT)
+000000EE  598C                     125      SUBA.L #4, A4                       ;Width of car
+000000F0  DE54                     126      ADD.W (A4),D7                       ;New right x position
+000000F2  0C47 020E                127      CMPI.W #SCREEN_END_X,D7
+000000F6  6E00 0098                128      BGT CAR_PARTIALLY_ON_SCREEN_RIGHT
+000000FA                           129      
+Line 130 ERROR: Undefined symbol
+000000FA  47F9 004DBD16            130      LEA SpritePositioning, A3
+00000100  588B                     131      ADDA.L #4, A3                       ;Gets width of cat
+00000102  3013                     132      MOVE.W (A3),D0 
+00000104  588B                     133      ADDA.L #4, A3                       ;Gets left X coordinate of cat
+00000106  321B                     134      MOVE.W (A3)+,D1
+00000108  D041                     135      ADD.W D1, D0                        ;Gets right x coordinate of cat
+0000010A                           136      
+0000010A                           137      *SEE IF CAR AND CAT COLLIDE
+0000010A  B440                     138      CMP.W D0, D2                        ;comparing right x coordinate of cat with left x coordinate of car
+0000010C  6D00 0144                139      BLT COLLISION_X_AXIS
+00000110                           140      
+00000110  9041                     141      SUB.W D1,D0
+00000112  BE40                     142      CMP.W D0,D7                         ;comparing left coordinate of cat with right coordinate of car
+00000114                           143      
+Line 144 ERROR: Undefined symbol
+00000114  45F9 004DBD16            144      LEA CarXScreenIndex, A2
+0000011A  3E12                     145      MOVE.W (A2),D7
+0000011C  5087                     146      ADDI.L #8, D7                       ;get car overlapping bit
+Line 147 ERROR: Undefined symbol
+0000011E  47F9 004DBD16            147      LEA SpritePositioning,A3  
+00000124                           148                                     
+00000124                           149      ;IF HAD BEEN OVERLAPPING, MOVE STATE TO NO LONGER OVERLAPPING 
+00000124  D7C7                     150      ADDA.L D7, A3                       ;OVERLAPPING BIT
+00000126  36BC 0000                151      MOVE.W #0,(A3)
+0000012A                           152      
+0000012A                           153  DRAW_CAR
+Line 154 ERROR: Undefined symbol
+0000012A  41F9 004DBD16            154      LEA GreenPickupTruck, A0   
+00000130                           155      
+00000130  2448                     156      MOVE.L A0,A2                             
+00000132  3018                     157      MOVE.W (A0)+, D0            ;Get header
+00000134                           158      
+Line 159 ERROR: Undefined symbol
+00000134  49F9 004DBD16            159      LEA SpritePositioning, A4
+Line 160 ERROR: Undefined symbol
+0000013A  47F9 004DBD16            160      LEA CarXIndex, A3
+00000140  3E13                     161      MOVE.W (A3),D7
+00000142                           162      
+00000142  D9C7                     163      ADDA.L D7, A4               ;GET CAR X INDEX
+00000144  3F14                     164      MOVE.W (A4),-(SP)           ;TOP LEFT X CHUNK
+00000146  588C                     165      ADDA.L #4, A4
+00000148  3F1C                     166      MOVE.W (A4)+,-(SP)          ;CHUNK WIDTH
+0000014A  3F14                     167      MOVE.W (A4),-(SP)           ;CHUNK HEIGHT
+0000014C  598C                     168      SUBA.L #4, A4
+0000014E  3F14                     169      MOVE.W (A4),-(SP)           ;TOP LEFT Y CHUNK
+00000150  5C8C                     170      ADDA.L #6, A4
+00000152  3F1C                     171      MOVE.W (A4)+,-(SP)          ;TOP LEFT X SCREEN
+00000154  3F14                     172      MOVE.W (A4),-(SP)           ;TOP LEFT Y SCREEN
+00000156  2F08                     173      MOVE.L A0,-(SP)
+00000158                           174      
+00000158  5D8C                     175      SUBA.L #6, A4               ;Bitmap Width
+0000015A                           176      
+Line 177 ERROR: Undefined symbol
+0000015A  43F9 004DBD16            177      LEA CarHeaderState, A1
+00000160  0C51 0002                178      CMPI.W #2,(A1)          
+00000164  6600 FEDA                179      BNE CHECK_WIDTH_0
+00000168                           180         
+00000168  0C54 004B                181      CMPI.W #CAR_WIDTH,(A4)      ;See if we are reading the bitmap for the full width car
+0000016C  6600 FEDE                182      BNE NO_RESTORE
+00000170                           183      
+Line 184 ERROR: Undefined symbol
+00000170  43F9 004DBD16            184      LEA FullCarWidthCalculations, A1
+00000176                           185      
+00000176  588C                     186      ADDA.L #4, A4               ;Get left x screen
+00000178  3614                     187      MOVE.W (A4),D3
+0000017A  3A5C                     188      MOVE.W (A4)+,A5             
+0000017C  3414                     189      MOVE.W (A4),D2              ;Top Y Screen
+0000017E  0642 002E                190      ADDI.W #CAR_HEIGHT,D2       ;Bottom Y Screen
+00000182                           191  
+Line 192 ERROR: Undefined symbol
+00000182                           192      MOVEM.L (A1),HEADER_REG     ;Restore the header calculations for full width car bitmap
+Line 193 ERROR: Undefined symbol
+00000182  4EB9 004DBD16            193      JSR SKIP_STORE_HEADER       ;Skip over header calculations
+00000188  DFFC 00000010            194      ADDA.L #16, A7
+0000018E  4E75                     195      RTS
+00000190                           196  
+00000190                           197          
+00000190                           198      
+00000190                           199  CAR_PARTIALLY_ON_SCREEN_RIGHT
+00000190  588C                     200      ADDA.L #4, A4
+00000192  3E14                     201      MOVE.W (A4),D7                  ;LEFTMOST CAR POSITION ON SCREEN
+00000194  4286                     202      CLR.L D6
+00000196  3C3C 020E                203      MOVE.W #SCREEN_END_X, D6
+0000019A  9C47                     204      SUB.W D7,D6    
+0000019C  598C                     205      SUBA.L #4, A4
+0000019E  3886                     206      MOVE.W D6,(A4)                  ;Set width of car to be however much of the car is on the "screen" so it doesn't print off screen
+000001A0  0C46 0000                207      CMPI #0, D6
+000001A4  6E84                     208      BGT DRAW_CAR
+000001A6  4E75                     209      RTS
+000001A8                           210      
+000001A8                           211  CAR_PARTIALLY_ON_SCREEN_LEFT
+000001A8  4286                     212      CLR.L D6
+000001AA  3C3C 0073                213      MOVE.W #SCREEN_START_X, D6
+000001AE                           214      
+Line 215 ERROR: Undefined symbol
+000001AE  49F9 004DBD16            215      LEA SpritePositioning, A4
+000001B4  4287                     216      CLR.L D7
+000001B6                           217      
+Line 218 ERROR: Undefined symbol
+000001B6  47F9 004DBD16            218      LEA CarXScreenIndex, A3
+000001BC  3E13                     219      MOVE.W (A3),D7
+000001BE                           220  
+000001BE  D9C7                     221      ADDA.L D7, A4
+000001C0  4287                     222      CLR.L D7
+000001C2  3E14                     223      MOVE.W (A4),D7
+000001C4  2A07                     224      MOVE.L D7, D5                   ;left X position of car on screen
+000001C6  598C                     225      SUBA.L #4,A4                    ;WIDTH OF CAR
+000001C8  DE54                     226      ADD.W (A4),D7                   ;D7 IS LEFTMOST POSITION OF CAR ON SCREEN, BECOMES RIGHT MOST X
+000001CA  9E46                     227      SUB.W D6,D7                     ;New car width
+000001CC  3887                     228      MOVE.W D7,(A4)                  ;Set width of car to be however much of the car is on the "screen" so it doesn't print off screen    
+000001CE                           229      
+000001CE  7673                     230      MOVE.L #SCREEN_START_X, D3
+000001D0  9685                     231      SUB.L D5, D3
+000001D2                           232      
+000001D2  584C                     233      ADDA #4, A4                     ;car x screen
+000001D4                           234      
+000001D4  0C54 0073                235      CMP.W #SCREEN_START_X, (A4)
+000001D8  6E00 000C                236      BGT CAR_NOT_OFF_SCREEN
+000001DC                           237      
+000001DC  38BC 0073                238      MOVE.W #SCREEN_START_X, (A4)
+000001E0  588C                     239      ADDA.L #4,A4
+000001E2  38BC 0000                240      MOVE.W #0,(A4)
+000001E6                           241      
+000001E6                           242  CAR_NOT_OFF_SCREEN    
+Line 243 ERROR: Undefined symbol
+000001E6  41F9 004DBD16            243      LEA GreenPickupTruck, A0   
+000001EC  2448                     244      MOVE.L A0,A2                             
+000001EE  3018                     245      MOVE.W (A0)+, D0                ;Get header
+000001F0                           246      
+000001F0  3F03                     247      MOVE.W D3,-(SP)                 ;TOP LEFT X CHUNK
+000001F2  3F07                     248      MOVE.W D7,-(SP)                 ;CHUNK WIDTH
+000001F4  5D8C                     249      SUBA.L #6, A4
+000001F6  3F14                     250      MOVE.W (A4),-(SP)               ;CHUNK HEIGHT
+000001F8  598C                     251      SUBA.L #4, A4
+000001FA  3F14                     252      MOVE.W (A4),-(SP)               ;TOP LEFT Y CHUNK
+000001FC  5C8C                     253      ADDA.L #6, A4
+000001FE  3F1C                     254      MOVE.W (A4)+,-(SP)              ;TOP LEFT X SCREEN
+00000200  3F14                     255      MOVE.W (A4),-(SP)               ;TOP LEFT Y SCREEN
+00000202  2F08                     256      MOVE.L A0,-(SP)
+00000204                           257      
+Line 258 ERROR: Undefined symbol
+00000204  4EB9 004DBD16            258      JSR    READ_THROUGH_HEADER
+0000020A  DFFC 00000010            259      ADDA.L #16, A7
+00000210                           260      
+00000210  4E75                     261      RTS
+00000212                           262  
+00000212                           263  REDRAW_CAR_BACKGROUND_LAST
+00000212  4280                     264      CLR.L D0
+00000214  4281                     265      CLR.L D1
+00000216  4282                     266      CLR.L D2
+00000218  227C 00000000            267      MOVE.L #0, A1
+0000021E                           268      
+0000021E  4EB8 0000                269      JSR REDRAW_CAR_BACKGROUND
+00000222                           270      
+Line 271 ERROR: Undefined symbol
+00000222  49F9 004DBD16            271      LEA SpritePositioning,A4
+00000228                           272      
+Line 273 ERROR: Undefined symbol
+00000228  47F9 004DBD16            273      LEA CarXIndex, A3
+0000022E  3E13                     274      MOVE.W (A3),D7
+00000230  D9C7                     275      ADDA.L D7, A4               ;Gets Car X position
+00000232                           276      
+00000232  38BC 0000                277      MOVE.W #CAR_START_X,(A4)
+00000236  588C                     278      ADDA.L #4,A4
+00000238  38BC 004B                279      MOVE.W #CAR_WIDTH,(A4)
+0000023C  588C                     280      ADDA.L #4,A4
+0000023E  38BC 020E                281      MOVE.W #SCREEN_END_X,(A4)
+00000242  588C                     282      ADDA.L #4,A4
+00000244  38BC 019B                283      MOVE.W #BITMAP_END_X,(A4)    
+00000248  588C                     284      ADDA.L #4,A4
+0000024A  28BC 00000000            285      MOVE.L #0,(A4)              ;RESET CAR TO BE NO LONGER MOVING    
+00000250                           286   
+00000250  4E75                     287      RTS
+00000252                           288      
+00000252                           289  COLLISION_X_AXIS
+00000252                           290      *CHECK FOR COLLISION ON y-AXIS AS WELL
+00000252  5C8C                     291      ADDA.L #6, A4               ;y coordinate of car
+00000254  3E13                     292      MOVE.W (A3),D7              ;Y COORDINATE OF CAT
+00000256  3C14                     293      MOVE.W (A4),D6
+00000258  BC47                     294      CMP.W D7,D6                 ;Compare y values of cat and car 
+0000025A  6600 FECE                295      BNE DRAW_CAR
+0000025E                           296  
+0000025E                           297  COLLISION_Y_AXIS
+0000025E  5C8C                     298      ADDA.L #6, A4               ;OVERLAPPING BIT
+00000260  0C54 0001                299      CMP.W #1,(A4)               ;IF EQUAL, CAT AND CAR HAVE ALREADY COLLIDED FOR 1 FRAME
+Line 300 ERROR: Undefined symbol
+00000264  6700 BAB0                300      BEQ UPDATE_CAT              ;IF CAT AND CAR ARE CURRENTLY IN THE SHOCK STATE, DO NOT REDRAW IT
+00000268                           301      
+Line 302 ERROR: Undefined symbol
+00000268  4EB9 004DBD16            302      JSR CAT_SCREAM
+0000026E                           303      
+Line 304 ERROR: Undefined symbol
+0000026E  43F9 004DBD16            304      LEA CatState, A1
+00000274  32BC 0002                305      MOVE.W #2,(A1)
+00000278  38BC 0001                306      MOVE.W #1,(A4)              ;Car is in overlap state
+0000027C                           307      
+0000027C                           308       ;CALCULATE NUMBER OF LIVES LEFT
+0000027C  4287                     309      CLR.L D7                  
+0000027E  41F9 000003B2            310      LEA LivesLeft,A0
+00000284  5350                     311      SUBI.W #1,(A0)
+00000286  3E10                     312      MOVE.W (A0),D7
+00000288                           313     
+Line 314 ERROR: Undefined symbol
+00000288  4EB9 004DBD16            314      JSR LOAD_SS                 ;Print lives left
+0000028E                           315  
+0000028E                           316      ;if lives left is 0, game over
+0000028E  43F9 000003B2            317      LEA LivesLeft,A1                       
+00000294  0C51 0000                318      CMP.W #0,(A1)
+Line 319 ERROR: Undefined symbol
+00000298  6700 BA7C                319      BEQ LOSE_SCREEN
+0000029C                           320      
+0000029C  0C51 0000                321      CMP.W #0,(A1)
+Line 322 ERROR: Undefined symbol
+000002A0  6600 BA74                322      BNE UPDATE_CAT 
+000002A4                           323      
+000002A4                           324      
+000002A4                           325  SET_CAR_UPPER_TO_MOVING
+Line 326 ERROR: Undefined symbol
+000002A4  4DF9 004DBD16            326      LEA CarXIndex, A6
+Line 327 ERROR: Undefined symbol
+000002AA  43F9 004DBD16            327      LEA CarXScreenIndex,A1 
+000002B0  0451 0014                328      SUBI.W #20,(A1)
+000002B4  0456 0014                329      SUBI.W #20,(A6)
+000002B8                           330      
+Line 331 ERROR: Undefined symbol
+000002B8  4BF9 004DBD16            331      LEA SpritePositioning, A5
+000002BE  4287                     332      CLR.L D7
+000002C0  3E16                     333      MOVE.W (A6),D7
+000002C2  0687 00000012            334      ADDI.L #18, D7               ;Bring pointer to moving bool
+000002C8  DBC7                     335      ADDA.L D7, A5
+000002CA                           336      
+000002CA  3ABC 0001                337      MOVE.W #1,(A5)
+000002CE                           338      
+Line 339 ERROR: Undefined symbol
+000002CE  6000 BA46                339      BRA CHECK_RESTART
+000002D2                           340  
+000002D2                           341  SET_CAR_LOWER_TO_MOVING
+Line 342 ERROR: Undefined symbol
+000002D2  4BF9 004DBD16            342      LEA SpritePositioning, A5
+Line 343 ERROR: Undefined symbol
+000002D8  4DF9 004DBD16            343      LEA CarXIndex,A6
+Line 344 ERROR: Undefined symbol
+000002DE  43F9 004DBD16            344      LEA CarXScreenIndex,A1 
+000002E4                           345      
+000002E4  4287                     346      CLR.L D7
+000002E6  3E16                     347      MOVE.W (A6),D7
+000002E8  0687 00000012            348      ADDI.L #18, D7               ;Bring pointer to moving bool
+000002EE  DBC7                     349      ADDA.L D7, A5
+000002F0                           350      
+000002F0  3ABC 0001                351      MOVE.W #1,(A5)
+000002F4                           352      
+000002F4  0451 0014                353      SUBI.W #20,(A1)
+000002F8  0456 0014                354      SUBI.W #20,(A6)
+000002FC                           355      
+Line 356 ERROR: Undefined symbol
+000002FC  6000 BA18                356      BRA CHECK_RESTART
+00000300                           357  
+00000300                           358  SPAWN_CARS
+00000300  41F9 000003B4            359      LEA CarSpawnTimes, A0
+00000306                           360      
+00000306  B258                     361      CMP.W (A0)+,D1
+00000308  6E00 0004                362      BGT CHECK_TIME_2_CAR_2
+0000030C  4E75                     363      RTS
+0000030E                           364      
+0000030E                           365  CHECK_TIME_2_CAR_2    
+0000030E  B258                     366      CMP.W (A0)+,D1
+00000310  6DC0                     367      BLT SET_CAR_LOWER_TO_MOVING
+00000312                           368      
+00000312  B258                     369      CMP.W (A0)+,D1
+00000314  6E00 0004                370      BGT CHECK_TIME_2_CAR_3
+00000318  4E75                     371      RTS
+0000031A                           372      
+0000031A                           373  CHECK_TIME_2_CAR_3 
+0000031A  B258                     374      CMP.W (A0)+,D1
+0000031C  6D86                     375      BLT SET_CAR_UPPER_TO_MOVING
+0000031E                           376      
+0000031E  B258                     377      CMP.W (A0)+,D1
+00000320  6E00 0004                378      BGT CHECK_TIME_2_CAR_4
+00000324  4E75                     379      RTS
+00000326                           380      
+00000326                           381  CHECK_TIME_2_CAR_4 
+00000326  B258                     382      CMP.W (A0)+,D1
+00000328  6DA8                     383      BLT SET_CAR_LOWER_TO_MOVING
+0000032A                           384      
+0000032A  B258                     385      CMP.W (A0)+,D1
+0000032C  6E00 0004                386      BGT CHECK_TIME_2_CAR_5
+00000330  4E75                     387      RTS
+00000332                           388      
+00000332                           389  CHECK_TIME_2_CAR_5 
+00000332  B258                     390      CMP.W (A0)+,D1
+00000334  6D9C                     391      BLT SET_CAR_LOWER_TO_MOVING    
+00000336                           392      
+00000336  B258                     393      CMP.W (A0)+,D1
+00000338  6E00 0004                394      BGT CHECK_TIME_2_CAR_6
+0000033C  4E75                     395      RTS
+0000033E                           396      
+0000033E                           397  CHECK_TIME_2_CAR_6 
+0000033E                           398      
+0000033E  B258                     399      CMP.W (A0)+,D1
+00000340  6D00 FF62                400      BLT SET_CAR_UPPER_TO_MOVING    
+00000344                           401      
+00000344  B258                     402      CMP.W (A0)+,D1
+00000346  6E00 0004                403      BGT CHECK_TIME_2_CAR_7
+0000034A  4E75                     404      RTS
+0000034C                           405      
+0000034C                           406  CHECK_TIME_2_CAR_7 
+0000034C                           407      
+0000034C  B258                     408      CMP.W (A0)+,D1
+0000034E  6D82                     409      BLT SET_CAR_LOWER_TO_MOVING    
+00000350                           410      
+00000350  B258                     411      CMP.W (A0)+,D1
+00000352  6E00 0004                412      BGT CHECK_TIME_2_CAR_8
+00000356  4E75                     413      RTS
+00000358                           414      
+00000358                           415  CHECK_TIME_2_CAR_8 
+00000358                           416      
+00000358  B258                     417      CMP.W (A0)+,D1
+0000035A  6D00 FF48                418      BLT SET_CAR_UPPER_TO_MOVING    
+0000035E                           419      
+0000035E  B258                     420      CMP.W (A0)+,D1
+00000360  6E00 0004                421      BGT CHECK_TIME_2_CAR_9
+00000364  4E75                     422      RTS
+00000366                           423      
+00000366                           424  CHECK_TIME_2_CAR_9 
+00000366                           425      
+00000366  B258                     426      CMP.W (A0)+,D1
+00000368  6D00 FF68                427      BLT SET_CAR_LOWER_TO_MOVING     
+0000036C                           428      
+0000036C  B258                     429      CMP.W (A0)+,D1
+0000036E  6E00 0004                430      BGT CHECK_TIME_2_CAR_10
+00000372  4E75                     431      RTS
+00000374                           432      
+00000374                           433  CHECK_TIME_2_CAR_10 
+00000374                           434      
+00000374  B258                     435      CMP.W (A0)+,D1
+00000376  6D00 FF2C                436      BLT SET_CAR_UPPER_TO_MOVING      
+0000037A  4E75                     437      RTS
+0000037C                           438      
+0000037C                           439  CHANGE_WIDTH_BACK
+0000037C  38BC 004B                440      MOVE.W #CAR_WIDTH,(A4)
+00000380  4E75                     441      RTS
+00000382                           442  
+00000382                           443  RETURN
+00000382  4E75                     444      RTS
+00000384                           445      
+00000384                           446  DECREASE_CAR_POINTER
+Line 447 ERROR: Undefined symbol
+00000384  41F9 004DBD16            447      LEA CarXIndex, A0
+Line 448 ERROR: Undefined symbol
+0000038A  43F9 004DBD16            448      LEA CarXScreenIndex,A1 
+00000390  0451 0014                449      SUBI.W #20,(A1)                 ;Decrease car pointer to point to car 1
+00000394  0450 0014                450      SUBI.W #20,(A0)
+00000398  4E75                     451      RTS
+0000039A                           452  
+0000039A                           453  INCREASE_CAR_POINTER
+Line 454 ERROR: Undefined symbol
+0000039A  41F9 004DBD16            454      LEA CarXIndex, A0       
+Line 455 ERROR: Undefined symbol
+000003A0  43F9 004DBD16            455      LEA CarXScreenIndex,A1
+000003A6  0651 0014                456      ADDI.W #20,(A1)                 ;Increase car pointer to point to car 2
+000003AA  0650 0014                457      ADDI.W #20,(A0)
+000003AE  4E75                     458      RTS
+000003B0                           459  
+000003B0                           460  
+000003B0                           461  
+000003B0                           462  paddingword1                ds.w 1
+000003B2                           463  
+000003B2= 0002                     464  LivesLeft                   dc.w 2
+000003B4                           465  
+000003B4                           466  CarSpawnTimes
+000003B4                           467  *For each car there is a time 1 and a time 2 to allow for a range of time in which the car can be spawned in
+000003B4= 01F4 0320 0352 0...      468      dc.w 500,800,    850,1150,    1200,1500,    1900,2200,      2400,2700,    3000, 3300,     3400, 3700,     3770,4070,      4120, 4420,     4470, 4770,      5000, 5300                 
+000003E0                           469  
+000003E0                           470  
+000003E0                           471  
+000003E0                           472  
+000003E0                           473  
+000003E0                           474  
+000003E0                           475  
+000003E0                           476  
+000003E0                           477  
+000003E0                           478  
+000003E0                           479  
+000003E0                           480  
+000003E0                           481  
+Line 482 WARNING: END directive missing, starting address not set
+
+46 errors detected
+1 warning generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BITMAP_END_X        19B
+CARSPAWNTIMES       3B4
+CAR_HEIGHT          2E
+CAR_NOT_OFF_SCREEN  1E6
+CAR_OFF_SCREEN_FULLY  29
+CAR_PARTIALLY_ON_SCREEN_LEFT  1A8
+CAR_PARTIALLY_ON_SCREEN_RIGHT  190
+CAR_START_X         0
+CAR_WIDTH           4B
+CHANGE_WIDTH_BACK   37C
+CHECK_TIME_2_CAR_10  374
+CHECK_TIME_2_CAR_2  30E
+CHECK_TIME_2_CAR_3  31A
+CHECK_TIME_2_CAR_4  326
+CHECK_TIME_2_CAR_5  332
+CHECK_TIME_2_CAR_6  33E
+CHECK_TIME_2_CAR_7  34C
+CHECK_TIME_2_CAR_8  358
+CHECK_TIME_2_CAR_9  366
+CHECK_WIDTH_0       40
+COLLISION_X_AXIS    252
+COLLISION_Y_AXIS    25E
+DECREASE_CAR_POINTER  384
+DRAW_CAR            12A
+INCREASE_CAR_POINTER  39A
+LIVESLEFT           3B2
+NO_RESTORE          4C
+PADDINGWORD1        3B0
+REDRAW_CAR_BACKGROUND  0
+REDRAW_CAR_BACKGROUND_LAST  212
+RETURN              382
+SCREEN_END_X        20E
+SCREEN_START_X      73
+SET_CAR_LOWER_TO_MOVING  2D2
+SET_CAR_UPPER_TO_MOVING  2A4
+SHIFT_OUT_DECIMALS  2
+SPAWN_CARS          300
+UPDATE_CAR          5A
+UPDATE_CAR_POSITION  B2
+VELOCITY            3
